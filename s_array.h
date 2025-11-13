@@ -111,9 +111,6 @@
     (_array)->capacity = 0; \
 
 #define s_array_increment(_array) \
-    s_assertf((_array) != NULL, "s_array_increment :: Array is null\n"); \
-    s_assertf((_array)->data != NULL, "s_array_increment :: Array data is null\n"); \
-    s_assertf((_array)->size < (_array)->capacity, "s_array_increment :: Array is full\n"); \
     (_array)->data[(_array)->size++]
 
 #define s_array_add(_array, _value) \
@@ -136,13 +133,9 @@
     (_array)->size--; \
 
 #define s_array_get(_array, _index) \
-    s_assertf((_array) != NULL, "s_array_get :: Array is null\n"); \
-    s_assertf((_array)->data != NULL, "s_array_get :: Array data is null\n"); \
-    s_assertf((_index) >= 0 && (_index) < (_array)->size, "s_array_get :: Index out of bounds\n"); \
     &(_array)->data[_index]
     
 #define s_array_get_size(_array) \
-    s_assertf((_array) != NULL, "s_array_get_size :: Array is null\n"); \
     (_array)->size
 
 #define s_foreach(_array, _it) \
