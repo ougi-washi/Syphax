@@ -11,7 +11,11 @@
 // This approach is inspired by arena allocators but per array instead of being block-based to avoid fragmentation
 // while offering a simple array handling interface.
 
-#define S_DEFINE_ARRAY_FUNCS(_type, _array, _size) \
+#define S_DEFINE_ARRAY(_type, _array, _size) \
+    typedef struct { \
+        _type data[_size]; \
+        sz size; \
+    } _array; \
     static void _array##_init(_array* array) { \
         memset(array, 0, sizeof(_type) * _size); \
         array->size = 0; \
@@ -78,27 +82,52 @@
         return array->size; \
     } 
 
-// Definition of an array type
-#define S_DEFINE_ARRAY(_type, _array_type, _size) \
-    typedef struct { \
-        _type data[_size]; \
-        sz size; \
-    } _array_type; \
-S_DEFINE_ARRAY_FUNCS(_type, _array_type, _size)
-
-// Declaration of an array variable
-#define S_DECLARE_ARRAY(_type, _array_type, _array_name, _size) \
+#define s_array(_type, _array, _size) \
     struct { \
-        _type data[_size]; \
+        _type* data; \
         sz size; \
-    } _array_name; \
-    S_DEFINE_ARRAY_FUNCS(_type, _array_type, _size)
+    } _array; \
+    _array.data = malloc(sizeof(_type) * _size); \
+    _array.size = 0; \
+    s_assertf(_array.data != NULL, "s_declare_array :: Failed to allocate memory\n");
 
-#define s_foreach(_array_type, _array, _it) \
-    for (sz _it = 0; _it < _array_type##_get_size(_array); _it++)
+#define s_array_init(_array, _size) \
+    if (_array.data != NULL) { \
+        free(_array.data); \
+    } \
+    _array.data = malloc(sizeof(_type) * _size); \
+    _array.size = 0; \
+    s_assertf(_array.data != NULL, "s_declare_array :: Failed to allocate memory\n");
 
-#define s_foreach_reverse(_array_type, _array, _it) \
-    for (sz _it = _array_type##_get_size(_array); _it-- > 0;)
+#define s_array_clear(_array) \
+    if (_array.data != NULL) { \
+        free(_array.data); \
+    } \
+    _array.data = NULL; \
+    _array.size = 0; \
+
+#define s_array_add(_array, _value) \
+    _array.data[_array.size++] = _value;
+
+#define s_array_remove(_array, _index) \
+    if (_index >= 0 && _index < _array.size) { \
+        memmove(&_array.data[_index], &_array.data[_index + 1], sizeof(_type) * (_array.size - _index - 1)); \
+        _array.size--; \
+    }
+
+#define s_array_remove_last(_array) \
+    if (_array.size > 0) { \
+        _array.size--; \
+    }
+
+#define s_array_get(_array, _index) \
+    &_array.data[_index]
+    
+#define s_foreach(_array, _it) \
+    for (sz _it = 0; _it < _array->size; _it++)
+
+#define s_foreach_reverse(_array, _it) \
+    for (sz _it = _array->size; _it-- > 0;)
 
 #define s_remove_if(_array_type, _array, _current_value, _condition) \
     s_foreach(_array_type, (_array), _it) { \
