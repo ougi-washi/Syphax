@@ -120,6 +120,9 @@
 #define s_array_get(_array, _index) \
     &(_array).data[_index]
     
+#define s_array_get_size(_array) \
+    (_array).size
+
 #define s_foreach(_array, _it) \
     for (sz _it = 0; _it < (_array)->size; _it++)
 
