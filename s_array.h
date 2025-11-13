@@ -11,11 +11,7 @@
 // This approach is inspired by arena allocators but per array instead of being block-based to avoid fragmentation
 // while offering a simple array handling interface.
 
-#define S_DEFINE_ARRAY(_type, _array, _size) \
-    typedef struct { \
-        _type data[_size]; \
-        sz size; \
-    } _array; \
+#define S_DEFINE_ARRAY_FUNCS(_type, _array, _size) \
     static void _array##_init(_array* array) { \
         memset(array, 0, sizeof(_type) * _size); \
         array->size = 0; \
@@ -81,6 +77,22 @@
     static sz _array##_get_size(const _array* array) { \
         return array->size; \
     } 
+
+// Definition of an array type
+#define S_DEFINE_ARRAY(_type, _array_type, _size) \
+    typedef struct { \
+        _type data[_size]; \
+        sz size; \
+    } _array_type; \
+S_DEFINE_ARRAY_FUNCS(_type, _array_type, _size)
+
+// Declaration of an array variable
+#define S_DECLARE_ARRAY(_type, _array_type, _array_name, _size) \
+    struct { \
+        _type data[_size]; \
+        sz size; \
+    } _array_name; \
+    S_DEFINE_ARRAY_FUNCS(_type, _array_type, _size)
 
 #define s_foreach(_array_type, _array, _it) \
     for (sz _it = 0; _it < _array_type##_get_size(_array); _it++)
