@@ -89,39 +89,39 @@
     } _array; \
 
 #define s_array_init(_array, _size) \
-    if ((_array).data != NULL) { \
-        free((_array).data); \
+    if ((_array)->data != NULL) { \
+        free((_array)->data); \
     } \
-    (_array).data = malloc(sizeof(_type) * _size); \
-    (_array).size = 0; \
-    s_assertf((_array).data != NULL, "s_declare_array :: Failed to allocate memory\n");
+    (_array)->data = malloc(sizeof(_type) * _size); \
+    (_array)->size = 0; \
+    s_assertf((_array)->data != NULL, "s_declare_array :: Failed to allocate memory\n");
 
 #define s_array_clear(_array) \
-    if ((_array).data != NULL) { \
-        free((_array).data); \
+    if ((_array)->data != NULL) { \
+        free((_array)->data); \
     } \
-    (_array).data = NULL; \
-    (_array).size = 0; \
+    (_array)->data = NULL; \
+    (_array)->size = 0; \
 
 #define s_array_add(_array, _value) \
-    (_array).data[(_array).size++] = _value;
+    (_array)->data[(_array)->size++] = _value;
 
 #define s_array_remove(_array, _index) \
-    if (_index >= 0 && _index < (_array).size) { \
-        memmove(&(_array).data[_index], &(_array).data[_index + 1], sizeof(_type) * ((_array).size - _index - 1)); \
-        (_array).size--; \
+    if (_index >= 0 && _index < (_array)->size) { \
+        memmove(&(_array)->data[_index], &(_array)->data[_index + 1], sizeof(_type) * ((_array)->size - _index - 1)); \
+        (_array)->size--; \
     }
 
 #define s_array_remove_last(_array) \
-    if ((_array).size > 0) { \
-        (_array).size--; \
+    if ((_array)->size > 0) { \
+        (_array)->size--; \
     }
 
 #define s_array_get(_array, _index) \
-    &(_array).data[_index]
+    &(_array)->data[_index]
     
 #define s_array_get_size(_array) \
-    (_array).size
+    (_array)->size
 
 #define s_foreach(_array, _it) \
     for (sz _it = 0; _it < (_array)->size; _it++)
