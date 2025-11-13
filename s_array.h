@@ -82,7 +82,7 @@
         return array->size; \
     } 
 
-#define s_array(_type, _array, _size) \
+#define s_array(_type, _array) \
     struct { \
         _type* data; \
         sz size; \
