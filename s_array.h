@@ -88,6 +88,7 @@
     struct { \
         _type* data; \
         sz size; \
+        sz capacity; \
     } _array; \
 
 #define s_array_init(_array, _size) \
@@ -97,6 +98,7 @@
     } \
     (_array)->data = malloc(sizeof(_type) * _size); \
     (_array)->size = 0; \
+    (_array)->capacity = _size; \
     s_assertf((_array)->data != NULL, "s_array_init :: Failed to allocate memory\n");
 
 #define s_array_clear(_array) \
@@ -106,15 +108,18 @@
     } \
     (_array)->data = NULL; \
     (_array)->size = 0; \
+    (_array)->capacity = 0; \
 
 #define s_array_increment(_array) \
     s_assertf((_array) != NULL, "s_array_increment :: Array is null\n"); \
     s_assertf((_array)->data != NULL, "s_array_increment :: Array data is null\n"); \
+    s_assertf((_array)->size < (_array)->capacity, "s_array_increment :: Array is full\n"); \
     (_array)->data[(_array)->size++]
 
 #define s_array_add(_array, _value) \
     s_assertf((_array) != NULL, "s_array_add :: Array is null\n"); \
     s_assertf((_array)->data != NULL, "s_array_add :: Array data is null\n"); \
+    s_assertf((_array)->size < (_array)->capacity, "s_array_add :: Array is full\n"); \
     (_array)->data[(_array)->size++] = _value;
 
 #define s_array_remove(_array, _index) \
