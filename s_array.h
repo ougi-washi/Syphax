@@ -111,7 +111,7 @@
     (_array)->capacity = 0; \
 
 #define s_array_increment(_array) \
-    (_array)->data[(_array)->size++]
+    &((_array)->data[(_array)->size++])
 
 #define s_array_add(_array, _value) \
     s_assertf((_array) != NULL, "s_array_add :: Array is null\n"); \
