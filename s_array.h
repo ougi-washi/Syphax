@@ -11,6 +11,7 @@
 // This approach is inspired by arena allocators but per array instead of being block-based to avoid fragmentation
 // while offering a simple array handling interface.
 
+// Old implementation of arrays (S_DEFINE_ARRAY)
 #define S_DEFINE_ARRAY(_type, _array, _size) \
     typedef struct { \
         _type data[_size]; \
@@ -82,6 +83,7 @@
         return array->size; \
     } 
 
+// New implementation of arrays
 #define s_array(_type, _array) \
     struct { \
         _type* data; \
@@ -89,44 +91,61 @@
     } _array; \
 
 #define s_array_init(_array, _size) \
+    s_assertf((_array) != NULL, "s_array_init :: Array is null\n"); \
     if ((_array)->data != NULL) { \
         free((_array)->data); \
     } \
     (_array)->data = malloc(sizeof(_type) * _size); \
     (_array)->size = 0; \
-    s_assertf((_array)->data != NULL, "s_declare_array :: Failed to allocate memory\n");
+    s_assertf((_array)->data != NULL, "s_array_init :: Failed to allocate memory\n");
 
 #define s_array_clear(_array) \
+    s_assertf((_array) != NULL, "s_array_clear :: Array is null\n"); \
     if ((_array)->data != NULL) { \
         free((_array)->data); \
     } \
     (_array)->data = NULL; \
     (_array)->size = 0; \
 
+#define s_array_increment(_array) \
+    s_assertf((_array) != NULL, "s_array_increment :: Array is null\n"); \
+    s_assertf((_array)->data != NULL, "s_array_increment :: Array data is null\n"); \
+    (_array)->data[(_array)->size++]
+
 #define s_array_add(_array, _value) \
+    s_assertf((_array) != NULL, "s_array_add :: Array is null\n"); \
+    s_assertf((_array)->data != NULL, "s_array_add :: Array data is null\n"); \
     (_array)->data[(_array)->size++] = _value;
 
 #define s_array_remove(_array, _index) \
-    if (_index >= 0 && _index < (_array)->size) { \
-        memmove(&(_array)->data[_index], &(_array)->data[_index + 1], sizeof(_type) * ((_array)->size - _index - 1)); \
-        (_array)->size--; \
-    }
+    s_assertf((_array) != NULL, "s_array_remove :: Array is null\n"); \
+    s_assertf((_array)->data != NULL, "s_array_remove :: Array data is null\n"); \
+    s_assertf((_index) >= 0 && (_index) < (_array)->size, "s_array_remove :: Index out of bounds\n"); \
+    memmove(&(_array)->data[_index], &(_array)->data[_index + 1], sizeof(_type) * ((_array)->size - _index - 1)); \
+    (_array)->size--; \
 
 #define s_array_remove_last(_array) \
-    if ((_array)->size > 0) { \
-        (_array)->size--; \
-    }
+    s_assertf((_array) != NULL, "s_array_remove_last :: Array is null\n"); \
+    s_assertf((_array)->data != NULL, "s_array_remove_last :: Array data is null\n"); \
+    s_assertf((_array)->size > 0, "s_array_remove_last :: Array is empty\n"); \
+    (_array)->size--; \
 
 #define s_array_get(_array, _index) \
+    s_assertf((_array) != NULL, "s_array_get :: Array is null\n"); \
+    s_assertf((_array)->data != NULL, "s_array_get :: Array data is null\n"); \
+    s_assertf((_index) >= 0 && (_index) < (_array)->size, "s_array_get :: Index out of bounds\n"); \
     &(_array)->data[_index]
     
 #define s_array_get_size(_array) \
+    s_assertf((_array) != NULL, "s_array_get_size :: Array is null\n"); \
     (_array)->size
 
 #define s_foreach(_array, _it) \
+    s_assertf((_array) != NULL, "s_foreach :: Array is null\n"); \
     for (sz _it = 0; _it < (_array)->size; _it++)
 
 #define s_foreach_reverse(_array, _it) \
+    s_assertf((_array) != NULL, "s_foreach_reverse :: Array is null\n"); \
     for (sz _it = (_array)->size; _it-- > 0;)
 
 #define s_remove_if(_array_type, _array, _current_value, _condition) \
