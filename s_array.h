@@ -91,6 +91,20 @@
         sz capacity; \
     } _array; \
 
+#define s_array_get(_array, _index) \
+    &(_array)->data[_index]
+    
+#define s_array_get_size(_array) \
+    (_array)->size
+
+#define s_foreach(_array, _it) \
+    s_assertf((_array) != NULL, "s_foreach :: Array is null\n"); \
+    for (sz _it = 0; _it < (_array)->size; _it++)
+
+#define s_foreach_reverse(_array, _it) \
+    s_assertf((_array) != NULL, "s_foreach_reverse :: Array is null\n"); \
+    for (sz _it = (_array)->size; _it-- > 0;)
+
 #define s_array_init(_array, _size) \
     s_assertf((_array) != NULL, "s_array_init :: Array is null\n"); \
     if ((_array)->data != NULL) { \
@@ -119,32 +133,29 @@
     s_assertf((_array)->size < (_array)->capacity, "s_array_add :: Array is full\n"); \
     (_array)->data[(_array)->size++] = _value;
 
-#define s_array_remove(_array, _type, _index) \
+#define s_array_remove_at(_array, _type, _index) \
     s_assertf((_array) != NULL, "s_array_remove :: Array is null\n"); \
     s_assertf((_array)->data != NULL, "s_array_remove :: Array data is null\n"); \
     s_assertf((_index) >= 0 && (_index) < (_array)->size, "s_array_remove :: Index out of bounds\n"); \
     memmove(&(_array)->data[_index], &(_array)->data[_index + 1], sizeof(_type) * ((_array)->size - _index - 1)); \
     (_array)->size--; \
 
+#define s_array_remove(_array, _type, _value) \
+    s_assertf((_array) != NULL, "s_array_remove :: Array is null\n"); \
+    s_assertf((_array)->data != NULL, "s_array_remove :: Array data is null\n"); \
+    s_foreach((_array), _it) { \
+        _type* _current_value = s_array_get((_array), _it); \
+        if (_current_value == _value) { \
+            s_array_remove_at((_array), _type, _it); \
+            break; \
+        } \
+    }
+
 #define s_array_remove_last(_array) \
     s_assertf((_array) != NULL, "s_array_remove_last :: Array is null\n"); \
     s_assertf((_array)->data != NULL, "s_array_remove_last :: Array data is null\n"); \
     s_assertf((_array)->size > 0, "s_array_remove_last :: Array is empty\n"); \
     (_array)->size--; \
-
-#define s_array_get(_array, _index) \
-    &(_array)->data[_index]
-    
-#define s_array_get_size(_array) \
-    (_array)->size
-
-#define s_foreach(_array, _it) \
-    s_assertf((_array) != NULL, "s_foreach :: Array is null\n"); \
-    for (sz _it = 0; _it < (_array)->size; _it++)
-
-#define s_foreach_reverse(_array, _it) \
-    s_assertf((_array) != NULL, "s_foreach_reverse :: Array is null\n"); \
-    for (sz _it = (_array)->size; _it-- > 0;)
 
 #define s_remove_if(_array_type, _array, _current_value, _condition) \
     s_foreach(_array_type, (_array), _it) { \
