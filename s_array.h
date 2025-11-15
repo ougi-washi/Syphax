@@ -105,7 +105,7 @@
     s_assertf((_array) != NULL, "s_foreach_reverse :: Array is null\n"); \
     for (sz _it = (_array)->size; _it-- > 0;)
 
-#define s_array_init(_array, _size) \
+#define s_array_init(_array, _type, _size) \
     s_assertf((_array) != NULL, "s_array_init :: Array is null\n"); \
     if ((_array)->data != NULL) { \
         free((_array)->data); \
