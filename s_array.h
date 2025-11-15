@@ -119,7 +119,7 @@
     s_assertf((_array)->size < (_array)->capacity, "s_array_add :: Array is full\n"); \
     (_array)->data[(_array)->size++] = _value;
 
-#define s_array_remove(_array, _index) \
+#define s_array_remove(_array, _type, _index) \
     s_assertf((_array) != NULL, "s_array_remove :: Array is null\n"); \
     s_assertf((_array)->data != NULL, "s_array_remove :: Array data is null\n"); \
     s_assertf((_index) >= 0 && (_index) < (_array)->size, "s_array_remove :: Index out of bounds\n"); \
