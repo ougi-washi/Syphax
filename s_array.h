@@ -97,6 +97,9 @@
 #define s_array_get_size(_array) \
     (_array)->size
 
+#define s_array_get_capacity(_array) \
+    (_array)->capacity
+
 #define s_foreach(_array, _it) \
     s_assertf((_array) != NULL, "s_foreach :: Array is null\n"); \
     for (sz _it = 0; _it < (_array)->size; _it++)
