@@ -7,6 +7,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 // This approach is inspired by arena allocators but per array instead of being block-based to avoid fragmentation
 // while offering a simple array handling interface.
