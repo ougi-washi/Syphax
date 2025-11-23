@@ -108,12 +108,12 @@
     s_assertf((_array) != NULL, "s_foreach_reverse :: Array is null\n"); \
     for (sz _it = (_array)->size; _it-- > 0;)
 
-#define s_array_init(_array, _type, _size) \
+#define s_array_init(_array, _size) \
     s_assertf((_array) != NULL, "s_array_init :: Array is null\n"); \
     if ((_array)->data != NULL) { \
         free((_array)->data); \
     } \
-    (_array)->data = malloc(sizeof(_type) * _size); \
+    (_array)->data = malloc(sizeof(*((_array)->data)) * _size); \
     (_array)->size = 0; \
     (_array)->capacity = _size; \
     s_assertf((_array)->data != NULL, "s_array_init :: Failed to allocate memory\n");
@@ -136,20 +136,19 @@
     s_assertf((_array)->size < (_array)->capacity, "s_array_add :: Array is full\n"); \
     (_array)->data[(_array)->size++] = _value;
 
-#define s_array_remove_at(_array, _type, _index) \
+#define s_array_remove_at(_array, _index) \
     s_assertf((_array) != NULL, "s_array_remove :: Array is null\n"); \
     s_assertf((_array)->data != NULL, "s_array_remove :: Array data is null\n"); \
     s_assertf((_index) >= 0 && (_index) < (_array)->size, "s_array_remove :: Index out of bounds\n"); \
-    memmove(&(_array)->data[_index], &(_array)->data[_index + 1], sizeof(_type) * ((_array)->size - _index - 1)); \
+    memmove(&(_array)->data[_index], &(_array)->data[_index + 1], sizeof(*((_array)->data)) * ((_array)->size - _index - 1)); \
     (_array)->size--; \
 
-#define s_array_remove(_array, _type, _value) \
+#define s_array_remove(_array, _value) \
     s_assertf((_array) != NULL, "s_array_remove :: Array is null\n"); \
     s_assertf((_array)->data != NULL, "s_array_remove :: Array data is null\n"); \
     s_foreach((_array), _it) { \
-        _type* _current_value = s_array_get((_array), _it); \
-        if (_current_value == _value) { \
-            s_array_remove_at((_array), _type, _it); \
+        if (s_array_get((_array), _it) == _value) { \
+            s_array_remove_at((_array), _it); \
             break; \
         } \
     }
