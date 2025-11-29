@@ -119,6 +119,7 @@
         (_array)->size = 0; \
         (_array)->capacity = _size; \
         s_assertf((_array)->data != NULL, "s_array_init :: Failed to allocate memory\n"); \
+        memset((_array)->data, 0, sizeof(*((_array)->data)) * _size); \
     } else { \
         (_array)->data = NULL; \
         (_array)->size = 0; \
