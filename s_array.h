@@ -114,10 +114,16 @@
     if ((_array)->data != NULL) { \
         free((_array)->data); \
     } \
-    (_array)->data = malloc(sizeof(*((_array)->data)) * _size); \
-    (_array)->size = 0; \
-    (_array)->capacity = _size; \
-    s_assertf((_array)->data != NULL, "s_array_init :: Failed to allocate memory\n");
+    if (_size > 0) { \
+        (_array)->data = malloc(sizeof(*((_array)->data)) * _size); \
+        (_array)->size = 0; \
+        (_array)->capacity = _size; \
+        s_assertf((_array)->data != NULL, "s_array_init :: Failed to allocate memory\n"); \
+    } else { \
+        (_array)->data = NULL; \
+        (_array)->size = 0; \
+        (_array)->capacity = 0; \
+    }
 
 #define s_array_clear(_array) \
     s_assertf((_array) != NULL, "s_array_clear :: Array is null\n"); \
