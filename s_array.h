@@ -111,9 +111,6 @@
 
 #define s_array_init(_array, _size) \
     s_assertf((_array) != NULL, "s_array_init :: Array is null\n"); \
-    if ((_array)->data != NULL) { \
-        free((_array)->data); \
-    } \
     if (_size > 0) { \
         (_array)->data = malloc(sizeof(*((_array)->data)) * _size); \
         (_array)->size = 0; \
