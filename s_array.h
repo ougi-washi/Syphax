@@ -1,4 +1,13 @@
-// Syphax - Ougi Washi
+/**
+ * Syphax - Ougi Washi
+ *
+ * Easy to use array library for C.
+ * This approach is inspired by arena allocators but per array instead of being block-based.
+ * This is not a dynamic array but a static array with a fixed size.
+ *
+ * MIT License
+ * Copyright (c) 2025-2026 Jed - Ougi Washi https://github.com/ougi-washi/Syphax
+ */
 
 #ifndef S_ARRAY_H
 #define S_ARRAY_H
@@ -8,9 +17,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-// This approach is inspired by arena allocators but per array instead of being block-based to avoid fragmentation
-// while offering a simple array handling interface.
 
 #define s_array(_type, _array) \
     struct { \
