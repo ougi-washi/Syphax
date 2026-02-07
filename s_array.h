@@ -23,7 +23,7 @@
         _type* data; \
         sz size; \
         sz capacity; \
-    } _array; \
+    } _array
 
 #define s_array_get(_array, _index) \
     &(_array)->data[_index]
