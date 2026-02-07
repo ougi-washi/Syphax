@@ -169,18 +169,18 @@ static inline s_mat3 s_mat3_inverse(const s_mat3* _mat) {
             inv.m[i][j] = aug[i][j + 3];
     return inv;
 }
-#define s_mat3_translate(_mat, _v)        (s_mat3_mul((_mat), &(s_mat3){ { {1.0f, 0.0f, (_v)->x}, {0.0f, 1.0f, (_v)->y}, {0.0f, 0.0f, 1.0f} } }))
-#define s_mat3_set_translation(_mat, _v)  { (_mat)->m[0][2] = (_v)->x; (_mat)->m[1][2] = (_v)->y; }
-#define s_mat3_get_translation(_mat)      (s_vec2((_mat)->m[0][2], (_mat)->m[1][2]))
-#define s_mat3_rotate(_mat, _angle)       (s_mat3_mul((_mat), &(s_mat3){ { {cosf(_angle), -sinf(_angle), 0.0f}, {sinf(_angle), cosf(_angle), 0.0f}, {0.0f, 0.0f, 1.0f} } }))
-#define s_mat3_set_rotation(_mat, _angle) { (_mat)->m[0][0] = cosf(_angle); (_mat)->m[0][1] = -sinf(_angle); (_mat)->m[1][0] = sinf(_angle); (_mat)->m[1][1] = cosf(_angle); }
-#define s_mat3_get_rotation(_mat)         (atan2f((_mat)->m[1][0], (_mat)->m[0][0]))
+#define s_mat3_translate(_mat, _v)        (s_mat3_mul((_mat), &(s_mat3){ { {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {(_v)->x, (_v)->y, 1.0f} } }))
+#define s_mat3_set_translation(_mat, _v)  { (_mat)->m[2][0] = (_v)->x; (_mat)->m[2][1] = (_v)->y; }
+#define s_mat3_get_translation(_mat)      (s_vec2((_mat)->m[2][0], (_mat)->m[2][1]))
+#define s_mat3_rotate(_mat, _angle)       (s_mat3_mul((_mat), &(s_mat3){ { {cosf(_angle), sinf(_angle), 0.0f}, {-sinf(_angle), cosf(_angle), 0.0f}, {0.0f, 0.0f, 1.0f} } }))
+#define s_mat3_set_rotation(_mat, _angle) { (_mat)->m[0][0] = cosf(_angle); (_mat)->m[0][1] = sinf(_angle); (_mat)->m[1][0] = -sinf(_angle); (_mat)->m[1][1] = cosf(_angle); }
+#define s_mat3_get_rotation(_mat)         (atan2f(-(_mat)->m[1][0], (_mat)->m[0][0]))
 #define s_mat3_scale(_mat, _v)            (s_mat3_mul((_mat), &(s_mat3){ { {(_v)->x, 0.0f, 0.0f}, {0.0f, (_v)->y, 0.0f}, {0.0f, 0.0f, 1.0f} } }))
 #define s_mat3_set_scale(_mat, _v)        { (_mat)->m[0][0] = (_v)->x; (_mat)->m[1][1] = (_v)->y; }
 #define s_mat3_get_scale(_mat)            (s_vec2((_mat)->m[0][0], (_mat)->m[1][1]))
-#define s_mat3_shear(_mat, _v)            (s_mat3_mul((_mat), &(s_mat3){ { {1.0f, (_v)->x, 0.0f}, {(_v)->y, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} } }))
-#define s_mat3_set_shear(_mat, _v)        { (_mat)->m[0][1] = (_v)->x; (_mat)->m[1][0] = (_v)->y; }
-#define s_mat3_get_shear(_mat)            (s_vec2((_mat)->m[0][1], (_mat)->m[1][0]))
+#define s_mat3_shear(_mat, _v)            (s_mat3_mul((_mat), &(s_mat3){ { {1.0f, (_v)->y, 0.0f}, {(_v)->x, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} } }))
+#define s_mat3_set_shear(_mat, _v)        { (_mat)->m[0][1] = (_v)->y; (_mat)->m[1][0] = (_v)->x; }
+#define s_mat3_get_shear(_mat)            (s_vec2((_mat)->m[1][0], (_mat)->m[0][1]))
 static inline s_mat3 s_mat3_look_at(const s_vec3* _from, const s_vec3* _to, const s_vec3* _up) {
     s_vec3 f = s_vec3_sub(_to, _from);
     f.z = 0.0f;
@@ -189,9 +189,9 @@ static inline s_mat3 s_mat3_look_at(const s_vec3* _from, const s_vec3* _to, cons
     s = s_vec3_normalize(&s);
     s_vec3 u = s_vec3_cross(&s, &f);
     s_mat3 result = s_mat3_identity;
-    result.m[0][0] = s.x; result.m[0][1] = u.x; result.m[0][2] = -s_vec3_dot(&s, _from);
-    result.m[1][0] = s.y; result.m[1][1] = u.y; result.m[1][2] = -s_vec3_dot(&u, _from);
-    result.m[2][0] = 0.0f; result.m[2][1] = 0.0f; result.m[2][2] = 1.0f;
+    result.m[0][0] = s.x; result.m[0][1] = s.y; result.m[0][2] = 0.0f;
+    result.m[1][0] = u.x; result.m[1][1] = u.y; result.m[1][2] = 0.0f;
+    result.m[2][0] = -s_vec3_dot(&s, _from); result.m[2][1] = -s_vec3_dot(&u, _from); result.m[2][2] = 1.0f;
     return result;
 }
 
@@ -274,14 +274,25 @@ static inline s_mat4 s_mat4_look_at(const s_vec3* _from, const s_vec3* _to, cons
     result.m[2][0] = s.z; result.m[2][1] = u.z; result.m[2][2] = -f.z; result.m[2][3] = -s_vec3_dot(&s, _from);
     return result;
 }
-static inline s_mat4 s_mat4_perspective(f32 _fov, f32 _aspect, f32 _near, f32 _far) {
-    f32 tanHalfFov = tanf(_fov / 2.0f);
+static inline s_mat4 s_mat4_perspective(const SYPHAX_PRECISION _fov, const SYPHAX_PRECISION _aspect, const SYPHAX_PRECISION _near, const SYPHAX_PRECISION _far) {
+    SYPHAX_PRECISION tanHalfFov = tanf(_fov / 2.0f);
     s_mat4 result = {0};
     result.m[0][0] = 1.0f / (_aspect * tanHalfFov);
     result.m[1][1] = 1.0f / tanHalfFov;
     result.m[2][2] = -(_far + _near) / (_far - _near);
     result.m[2][3] = -(2.0f * _far * _near) / (_far - _near);
     result.m[3][2] = -1.0f;
+    return result;
+}
+static inline s_mat4 s_mat4_ortho(const SYPHAX_PRECISION _left, const SYPHAX_PRECISION _right, const SYPHAX_PRECISION _bottom, const SYPHAX_PRECISION _top, const SYPHAX_PRECISION _near, const SYPHAX_PRECISION _far) {
+    s_mat4 result = {0};
+    result.m[0][0] = 2.0f / (_right - _left);
+    result.m[1][1] = 2.0f / (_top - _bottom);
+    result.m[2][2] = -2.0f / (_far - _near);
+    result.m[0][3] = -(_right + _left) / (_right - _left);
+    result.m[1][3] = -(_top + _bottom) / (_top - _bottom);
+    result.m[2][3] = -(_far + _near) / (_far - _near);
+    result.m[3][3] = 1.0f;
     return result;
 }
 
