@@ -181,6 +181,19 @@ static inline s_mat3 s_mat3_inverse(const s_mat3* _mat) {
 #define s_mat3_shear(_mat, _v)            (s_mat3_mul((_mat), &(s_mat3){ { {1.0f, (_v)->x, 0.0f}, {(_v)->y, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} } }))
 #define s_mat3_set_shear(_mat, _v)        { (_mat)->m[0][1] = (_v)->x; (_mat)->m[1][0] = (_v)->y; }
 #define s_mat3_get_shear(_mat)            (s_vec2((_mat)->m[0][1], (_mat)->m[1][0]))
+static inline s_mat3 s_mat3_look_at(const s_vec3* _from, const s_vec3* _to, const s_vec3* _up) {
+    s_vec3 f = s_vec3_sub(_to, _from);
+    f.z = 0.0f;
+    f = s_vec3_normalize(&f);
+    s_vec3 s = s_vec3_cross(&f, _up);
+    s = s_vec3_normalize(&s);
+    s_vec3 u = s_vec3_cross(&s, &f);
+    s_mat3 result = s_mat3_identity;
+    result.m[0][0] = s.x; result.m[0][1] = u.x; result.m[0][2] = -s_vec3_dot(&s, _from);
+    result.m[1][0] = s.y; result.m[1][1] = u.y; result.m[1][2] = -s_vec3_dot(&u, _from);
+    result.m[2][0] = 0.0f; result.m[2][1] = 0.0f; result.m[2][2] = 1.0f;
+    return result;
+}
 
 // s_mat4
 #define s_mat4(_m00, _m01, _m02, _m03, _m10, _m11, _m12, _m13, _m20, _m21, _m22, _m23, _m30, _m31, _m32, _m33) \
@@ -249,6 +262,28 @@ static inline s_mat4 s_mat4_inverse(const s_mat4* _mat) {
 #define s_mat4_scale(_mat, _v)              (s_mat4_mul((_mat), &(s_mat4){ { {(_v)->x, 0.0f, 0.0f, 0.0f}, {0.0f, (_v)->y, 0.0f, 0.0f}, {0.0f, 0.0f, (_v)->z, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f} } }))
 #define s_mat4_set_scale(_mat, _v)          { (_mat)->m[0][0] = (_v)->x; (_mat)->m[1][1] = (_v)->y; (_mat)->m[2][2] = (_v)->z; }
 #define s_mat4_get_scale(_mat)              (s_vec3((_mat)->m[0][0], (_mat)->m[1][1], (_mat)->m[2][2]))
+static inline s_mat4 s_mat4_look_at(const s_vec3* _from, const s_vec3* _to, const s_vec3* _up) {
+    s_vec3 f = s_vec3_sub(_to, _from);
+    f = s_vec3_normalize(&f);
+    s_vec3 s = s_vec3_cross(&f, _up);
+    s = s_vec3_normalize(&s);
+    s_vec3 u = s_vec3_cross(&s, &f);
+    s_mat4 result = s_mat4_identity;
+    result.m[0][0] = s.x; result.m[0][1] = u.x; result.m[0][2] = -f.x; result.m[0][3] = -s_vec3_dot(&s, _from);
+    result.m[1][0] = s.y; result.m[1][1] = u.y; result.m[1][2] = -f.y; result.m[1][3] = -s_vec3_dot(&s, _from);
+    result.m[2][0] = s.z; result.m[2][1] = u.z; result.m[2][2] = -f.z; result.m[2][3] = -s_vec3_dot(&s, _from);
+    return result;
+}
+static inline s_mat4 s_mat4_perspective(f32 _fov, f32 _aspect, f32 _near, f32 _far) {
+    f32 tanHalfFov = tanf(_fov / 2.0f);
+    s_mat4 result = {0};
+    result.m[0][0] = 1.0f / (_aspect * tanHalfFov);
+    result.m[1][1] = 1.0f / tanHalfFov;
+    result.m[2][2] = -(_far + _near) / (_far - _near);
+    result.m[2][3] = -(2.0f * _far * _near) / (_far - _near);
+    result.m[3][2] = -1.0f;
+    return result;
+}
 
 #define s_assert(expr) if (!(expr))         { fprintf(stderr, "[%s: %d] Assertion failed: %s\n", __FILE__, __LINE__, #expr); assert(0); }
 #define s_assertf(expr, ...) if (!(expr))   { fprintf(stderr, "[%s: %d] Assertion failed: %s\n", __FILE__, __LINE__, #expr); fprintf(stderr, __VA_ARGS__); assert(0); }
