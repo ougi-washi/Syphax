@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -425,6 +426,14 @@ static inline b8 s_file_size(const char* _path, sz* _out_size) {
     s_stat_t st;
     if (s_stat(_path, &st) != 0) return false;
     *_out_size = (sz)st.st_size;
+    return true;
+}
+
+static inline b8 s_file_mtime(const char* _path, time_t* _out_mtime) {
+    if (_path == NULL || _path[0] == '\0' || _out_mtime == NULL) return false;
+    s_stat_t st;
+    if (s_stat(_path, &st) != 0) return false;
+    *_out_mtime = st.st_mtime;
     return true;
 }
 
