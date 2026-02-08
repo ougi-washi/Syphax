@@ -48,22 +48,21 @@ int main(void) {
     s_assertf(s_mutex_init(&shared.mtx), "s_mutex_init failed\n");
     s_assertf(s_cond_init(&shared.cond), "s_cond_init failed\n");
 
-    const i32 thread_count = 4;
-    const i32 iterations = 10000;
-    s_thread threads[thread_count];
+    enum { THREAD_COUNT = 4, ITERATIONS = 10000 };
+    s_thread threads[THREAD_COUNT];
     s_worker_args args = {0};
     args.shared = &shared;
-    args.iterations = iterations;
+    args.iterations = ITERATIONS;
 
-    for (i32 i = 0; i < thread_count; i++) {
+    for (i32 i = 0; i < THREAD_COUNT; i++) {
         s_assertf(s_thread_create(&threads[i], s_worker, &args), "s_thread_create failed\n");
     }
 
-    for (i32 i = 0; i < thread_count; i++) {
+    for (i32 i = 0; i < THREAD_COUNT; i++) {
         s_assertf(s_thread_join(&threads[i], NULL), "s_thread_join failed\n");
     }
 
-    const i32 expected = thread_count * iterations;
+    const i32 expected = THREAD_COUNT * ITERATIONS;
     s_assertf(shared.count == expected, "count mismatch\n");
     printf("count=%d\n", shared.count);
 
