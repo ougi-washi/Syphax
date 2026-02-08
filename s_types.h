@@ -199,20 +199,20 @@ static inline s_mat3 s_mat3_look_at(const s_vec3* _from, const s_vec3* _to, cons
 #define s_mat4(_m00, _m01, _m02, _m03, _m10, _m11, _m12, _m13, _m20, _m21, _m22, _m23, _m30, _m31, _m32, _m33) \
 	(s_mat4){ \
 		.m = { \
-			{ _m00, _m01, _m02, _m03 }, \
-			{ _m10, _m11, _m12, _m13 }, \
-			{ _m20, _m21, _m22, _m23 }, \
-			{ _m30, _m31, _m32, _m33 } \
+			{ _m00, _m10, _m20, _m30 }, \
+			{ _m01, _m11, _m21, _m31 }, \
+			{ _m02, _m12, _m22, _m32 }, \
+			{ _m03, _m13, _m23, _m33 } \
 		} \
 	}
 #define s_mat4_identity (s_mat4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))
 static inline s_mat4 s_mat4_mul(const s_mat4* _mat_a, const s_mat4* _mat_b) {
     s_mat4 result;
-    for (u8 i = 0; i < 4; i++) {
-        for (u8 j = 0; j < 4; j++) {
-            result.m[i][j] = 0.0f;
+    for (u8 c = 0; c < 4; c++) {
+        for (u8 r = 0; r < 4; r++) {
+            result.m[c][r] = 0.0f;
             for (u8 k = 0; k < 4; k++) {
-                result.m[i][j] += _mat_a->m[i][k] * _mat_b->m[k][j];
+                result.m[c][r] += _mat_a->m[k][r] * _mat_b->m[c][k];
             }
         }
     }
@@ -228,7 +228,7 @@ static inline s_mat4 s_mat4_inverse(const s_mat4* _mat) {
     s_mat4 inv = *_mat;
     SYPHAX_PRECISION aug[4][8];
     for (u8 i = 0; i < 4; i++) {
-        for (u8 j = 0; j < 4; j++) aug[i][j] = inv.m[i][j];
+        for (u8 j = 0; j < 4; j++) aug[i][j] = inv.m[j][i];
         for (u8 j = 0; j < 4; j++) aug[i][j + 4] = (i == j) ? 1.0f : 0.0f;
     }
     for (u8 i = 0; i < 4; i++) {
@@ -244,15 +244,15 @@ static inline s_mat4 s_mat4_inverse(const s_mat4* _mat) {
     }
     for (u8 i = 0; i < 4; i++)
         for (u8 j = 0; j < 4; j++)
-            inv.m[i][j] = aug[i][j + 4];
+            inv.m[j][i] = aug[i][j + 4];
     return inv;
 }
-#define s_mat4_translate(_mat, _v)          (s_mat4_mul((_mat), &(s_mat4){ { {1.0f, 0.0f, 0.0f, (_v)->x}, {0.0f, 1.0f, 0.0f, (_v)->y}, {0.0f, 0.0f, 1.0f, (_v)->z}, {0.0f, 0.0f, 0.0f, 1.0f} } }))
-#define s_mat4_set_translation(_mat, _v)    { (_mat)->m[0][3] = (_v)->x; (_mat)->m[1][3] = (_v)->y; (_mat)->m[2][3] = (_v)->z; }
-#define s_mat4_get_translation(_mat)        (s_vec3((_mat)->m[0][3], (_mat)->m[1][3], (_mat)->m[2][3]))
-#define s_mat4_rotate_x(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4){ { {1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, cosf(_angle), -sinf(_angle), 0.0f}, {0.0f, sinf(_angle), cosf(_angle), 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f} } }))
-#define s_mat4_set_rotation_x(_mat, _angle) { (_mat)->m[1][1] = cosf(_angle); (_mat)->m[1][2] = -sinf(_angle); (_mat)->m[2][1] = sinf(_angle); (_mat)->m[2][2] = cosf(_angle); }
-#define s_mat4_get_rotation_x(_mat)         (atan2f((_mat)->m[2][1], (_mat)->m[1][1]))
+#define s_mat4_translate(_mat, _v)          (s_mat4_mul((_mat), &(s_mat4(1.0f, 0.0f, 0.0f, (_v)->x, 0.0f, 1.0f, 0.0f, (_v)->y, 0.0f, 0.0f, 1.0f, (_v)->z, 0.0f, 0.0f, 0.0f, 1.0f))))
+#define s_mat4_set_translation(_mat, _v)    { (_mat)->m[3][0] = (_v)->x; (_mat)->m[3][1] = (_v)->y; (_mat)->m[3][2] = (_v)->z; }
+#define s_mat4_get_translation(_mat)        (s_vec3((_mat)->m[3][0], (_mat)->m[3][1], (_mat)->m[3][2]))
+#define s_mat4_rotate_x(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, cosf(_angle), -sinf(_angle), 0.0f, 0.0f, sinf(_angle), cosf(_angle), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
+#define s_mat4_set_rotation_x(_mat, _angle) { (_mat)->m[1][1] = cosf(_angle); (_mat)->m[1][2] = sinf(_angle); (_mat)->m[2][1] = -sinf(_angle); (_mat)->m[2][2] = cosf(_angle); }
+#define s_mat4_get_rotation_x(_mat)         (atan2f((_mat)->m[1][2], (_mat)->m[1][1]))
 #define s_mat4_rotate_y(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4){ { {cosf(_angle), 0.0f, sinf(_angle), 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {-sinf(_angle), 0.0f, cosf(_angle), 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f} } }))
 #define s_mat4_set_rotation_y(_mat, _angle) { (_mat)->m[0][0] = cosf(_angle); (_mat)->m[0][2] = -sinf(_angle); (_mat)->m[2][0] = sinf(_angle); (_mat)->m[2][2] = cosf(_angle); }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 #define s_mat4_get_rotation_y(_mat)         (atan2f((_mat)->m[2][0], (_mat)->m[0][0]))
@@ -262,42 +262,52 @@ static inline s_mat4 s_mat4_inverse(const s_mat4* _mat) {
 #define s_mat4_scale(_mat, _v)              (s_mat4_mul((_mat), &(s_mat4){ { {(_v)->x, 0.0f, 0.0f, 0.0f}, {0.0f, (_v)->y, 0.0f, 0.0f}, {0.0f, 0.0f, (_v)->z, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f} } }))
 #define s_mat4_set_scale(_mat, _v)          { (_mat)->m[0][0] = (_v)->x; (_mat)->m[1][1] = (_v)->y; (_mat)->m[2][2] = (_v)->z; }
 #define s_mat4_get_scale(_mat)              (s_vec3((_mat)->m[0][0], (_mat)->m[1][1], (_mat)->m[2][2]))
+#undef s_mat4_rotate_y
+#define s_mat4_rotate_y(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4(cosf(_angle), 0.0f, sinf(_angle), 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, -sinf(_angle), 0.0f, cosf(_angle), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
+#undef s_mat4_set_rotation_y
+#define s_mat4_set_rotation_y(_mat, _angle) { (_mat)->m[0][0] = cosf(_angle); (_mat)->m[2][0] = sinf(_angle); (_mat)->m[0][2] = -sinf(_angle); (_mat)->m[2][2] = cosf(_angle); }
+#undef s_mat4_get_rotation_y
+#define s_mat4_get_rotation_y(_mat)         (atan2f((_mat)->m[2][0], (_mat)->m[0][0]))
+#undef s_mat4_rotate_z
+#define s_mat4_rotate_z(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4(cosf(_angle), -sinf(_angle), 0.0f, 0.0f, sinf(_angle), cosf(_angle), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
+#undef s_mat4_set_rotation_z
+#define s_mat4_set_rotation_z(_mat, _angle) { (_mat)->m[0][0] = cosf(_angle); (_mat)->m[0][1] = sinf(_angle); (_mat)->m[1][0] = -sinf(_angle); (_mat)->m[1][1] = cosf(_angle); }
+#undef s_mat4_get_rotation_z
+#define s_mat4_get_rotation_z(_mat)         (atan2f((_mat)->m[0][1], (_mat)->m[0][0]))
+#undef s_mat4_scale
+#define s_mat4_scale(_mat, _v)              (s_mat4_mul((_mat), &(s_mat4((_v)->x, 0.0f, 0.0f, 0.0f, 0.0f, (_v)->y, 0.0f, 0.0f, 0.0f, 0.0f, (_v)->z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
 static inline s_mat4 s_mat4_look_at(const s_vec3* _from, const s_vec3* _to, const s_vec3* _up) {
     s_vec3 f = s_vec3_sub(_to, _from);
     f = s_vec3_normalize(&f);
     s_vec3 s = s_vec3_cross(&f, _up);
     s = s_vec3_normalize(&s);
     s_vec3 u = s_vec3_cross(&s, &f);
-    s_mat4 result = s_mat4_identity;
-    result.m[0][0] = s.x; result.m[0][1] = u.x; result.m[0][2] = -f.x; result.m[0][3] = -s_vec3_dot(&s, _from);
-    result.m[1][0] = s.y; result.m[1][1] = u.y; result.m[1][2] = -f.y; result.m[1][3] = -s_vec3_dot(&s, _from);
-    result.m[2][0] = s.z; result.m[2][1] = u.z; result.m[2][2] = -f.z; result.m[2][3] = -s_vec3_dot(&s, _from);
-    return result;
+    return s_mat4(
+        s.x, u.x, -f.x, 0.0f,
+        s.y, u.y, -f.y, 0.0f,
+        s.z, u.z, -f.z, 0.0f,
+        -s_vec3_dot(&s, _from), -s_vec3_dot(&u, _from), s_vec3_dot(&f, _from), 1.0f
+    );
 }
 static inline s_mat4 s_mat4_perspective(const SYPHAX_PRECISION _fov, const SYPHAX_PRECISION _aspect, const SYPHAX_PRECISION _near, const SYPHAX_PRECISION _far) {
     SYPHAX_PRECISION tanHalfFov = tanf(_fov / 2.0f);
-    s_mat4 result = {0};
-    result.m[0][0] = 1.0f / (_aspect * tanHalfFov);
-    result.m[1][1] = 1.0f / tanHalfFov;
-    result.m[2][2] = -(_far + _near) / (_far - _near);
-    result.m[2][3] = -(2.0f * _far * _near) / (_far - _near);
-    result.m[3][2] = -1.0f;
-    return result;
+    return s_mat4(
+        1.0f / (_aspect * tanHalfFov), 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f / tanHalfFov, 0.0f, 0.0f,
+        0.0f, 0.0f, -(_far + _near) / (_far - _near), -(2.0f * _far * _near) / (_far - _near),
+        0.0f, 0.0f, -1.0f, 0.0f
+    );
 }
 static inline s_mat4 s_mat4_ortho(const SYPHAX_PRECISION _left, const SYPHAX_PRECISION _right, const SYPHAX_PRECISION _bottom, const SYPHAX_PRECISION _top, const SYPHAX_PRECISION _near, const SYPHAX_PRECISION _far) {
-    s_mat4 result = {0};
-    result.m[0][0] = 2.0f / (_right - _left);
-    result.m[1][1] = 2.0f / (_top - _bottom);
-    result.m[2][2] = -2.0f / (_far - _near);
-    result.m[0][3] = -(_right + _left) / (_right - _left);
-    result.m[1][3] = -(_top + _bottom) / (_top - _bottom);
-    result.m[2][3] = -(_far + _near) / (_far - _near);
-    result.m[3][3] = 1.0f;
-    return result;
+    return s_mat4(
+        2.0f / (_right - _left), 0.0f, 0.0f, -(_right + _left) / (_right - _left),
+        0.0f, 2.0f / (_top - _bottom), 0.0f, -(_top + _bottom) / (_top - _bottom),
+        0.0f, 0.0f, -2.0f / (_far - _near), -(_far + _near) / (_far - _near),
+        0.0f, 0.0f, 0.0f, 1.0f
+    );
 }
 
 #define s_assert(expr) if (!(expr))         { fprintf(stderr, "[%s: %d] Assertion failed: %s\n", __FILE__, __LINE__, #expr); assert(0); }
 #define s_assertf(expr, ...) if (!(expr))   { fprintf(stderr, "[%s: %d] Assertion failed: %s\n", __FILE__, __LINE__, #expr); fprintf(stderr, __VA_ARGS__); assert(0); }
 
 #endif // S_TYPES_H
-
