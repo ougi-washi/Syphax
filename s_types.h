@@ -283,10 +283,10 @@ static inline s_mat4 s_mat4_look_at(const s_vec3* _from, const s_vec3* _to, cons
     s = s_vec3_normalize(&s);
     s_vec3 u = s_vec3_cross(&s, &f);
     return s_mat4(
-        s.x, u.x, -f.x, 0.0f,
-        s.y, u.y, -f.y, 0.0f,
-        s.z, u.z, -f.z, 0.0f,
-        -s_vec3_dot(&s, _from), -s_vec3_dot(&u, _from), s_vec3_dot(&f, _from), 1.0f
+		s.x, u.x, -f.x, -s_vec3_dot(&s, _from),
+		s.y, u.y, -f.y, -s_vec3_dot(&u, _from),
+		s.z, u.z, -f.z, s_vec3_dot(&f, _from),
+		0.0f, 0.0f, 0.0f, 1.0f
     );
 }
 static inline s_mat4 s_mat4_perspective(const SYPHAX_PRECISION _fov, const SYPHAX_PRECISION _aspect, const SYPHAX_PRECISION _near, const SYPHAX_PRECISION _far) {
@@ -311,3 +311,4 @@ static inline s_mat4 s_mat4_ortho(const SYPHAX_PRECISION _left, const SYPHAX_PRE
 #define s_assertf(expr, ...) if (!(expr))   { fprintf(stderr, "[%s: %d] Assertion failed: %s\n", __FILE__, __LINE__, #expr); fprintf(stderr, __VA_ARGS__); assert(0); }
 
 #endif // S_TYPES_H
+
