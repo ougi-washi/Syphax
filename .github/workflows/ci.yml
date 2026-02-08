@@ -21,7 +21,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
-          cc -std=c11 -Wall -Wextra -pedantic -I. examples/types.c -o examples/types
+          cc -std=c11 -Wall -Wextra -pedantic -I. examples/types.c -o examples/types -lm
           cc -std=c11 -Wall -Wextra -pedantic -I. examples/array.c -o examples/array
           cc -std=c11 -Wall -Wextra -pedantic -I. examples/files.c -o examples/files
           cc -std=c11 -Wall -Wextra -pedantic -I. examples/json.c -o examples/json
