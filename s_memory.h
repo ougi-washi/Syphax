@@ -50,7 +50,7 @@ typedef struct {
     sz free_count;
     sz bytes_allocated;
     sz bytes_freed;
-} s_mem_arena;
+} s_memory_arena;
 
 typedef struct {
     sz alloc_count;
@@ -103,8 +103,8 @@ static inline void s_mem_segment_destroy(s_mem_segment* _seg) {
     free(_seg);
 }
 
-static inline void s_mem_arena_init(s_mem_arena* _arena, sz _capacity) {
-    s_assertf(_arena != NULL, "s_mem_arena_init :: Arena is null\n");
+static inline void s_memory_arena_init(s_memory_arena* _arena, sz _capacity) {
+    s_assertf(_arena != NULL, "s_memory_arena_init :: Arena is null\n");
     _arena->seg_head = NULL;
     _arena->seg_tail = NULL;
     _arena->block_head = NULL;
@@ -120,8 +120,8 @@ static inline void s_mem_arena_init(s_mem_arena* _arena, sz _capacity) {
     _arena->seg_tail = seg;
 }
 
-static inline void s_mem_arena_init_with_buffer(s_mem_arena* _arena, void* _buffer, sz _capacity) {
-    s_assertf(_arena != NULL, "s_mem_arena_init_with_buffer :: Arena is null\n");
+static inline void s_memory_arena_init_with_buffer(s_memory_arena* _arena, void* _buffer, sz _capacity) {
+    s_assertf(_arena != NULL, "s_memory_arena_init_with_buffer :: Arena is null\n");
     _arena->seg_head = NULL;
     _arena->seg_tail = NULL;
     _arena->block_head = NULL;
@@ -137,7 +137,7 @@ static inline void s_mem_arena_init_with_buffer(s_mem_arena* _arena, void* _buff
     _arena->seg_tail = seg;
 }
 
-static inline void s_mem_arena_reset(s_mem_arena* _arena) {
+static inline void s_memory_arena_reset(s_memory_arena* _arena) {
     if (_arena == NULL) return;
     if (_arena->seg_head != NULL) {
         s_mem_segment* keep = _arena->seg_head;
@@ -159,7 +159,7 @@ static inline void s_mem_arena_reset(s_mem_arena* _arena) {
     _arena->bytes_freed = 0;
 }
 
-static inline void s_mem_arena_release(s_mem_arena* _arena) {
+static inline void s_memory_arena_release(s_memory_arena* _arena) {
     if (_arena == NULL) return;
     s_mem_segment* seg = _arena->seg_head;
     while (seg != NULL) {
@@ -177,7 +177,7 @@ static inline void s_mem_arena_release(s_mem_arena* _arena) {
     _arena->bytes_freed = 0;
 }
 
-static inline b8 s_mem_arena_contains(const s_mem_arena* _arena, const void* _ptr) {
+static inline b8 s_memory_arena_contains(const s_memory_arena* _arena, const void* _ptr) {
     if (_arena == NULL || _ptr == NULL) return false;
     const s_mem_segment* seg = _arena->seg_head;
     const u8* ptr = (const u8*)_ptr;
@@ -190,7 +190,7 @@ static inline b8 s_mem_arena_contains(const s_mem_arena* _arena, const void* _pt
     return false;
 }
 
-static inline s_mem_segment* s_mem_arena_segment_from_ptr(const s_mem_arena* _arena, const void* _ptr) {
+static inline s_mem_segment* s_memory_arena_segment_from_ptr(const s_memory_arena* _arena, const void* _ptr) {
     if (_arena == NULL || _ptr == NULL) return NULL;
     s_mem_segment* seg = _arena->seg_head;
     const u8* ptr = (const u8*)_ptr;
@@ -203,9 +203,9 @@ static inline s_mem_segment* s_mem_arena_segment_from_ptr(const s_mem_arena* _ar
     return NULL;
 }
 
-static inline s_mem_block* s_mem_arena_block_from_ptr(const s_mem_arena* _arena, const void* _ptr) {
+static inline s_mem_block* s_memory_arena_block_from_ptr(const s_memory_arena* _arena, const void* _ptr) {
     if (_arena == NULL || _ptr == NULL) return NULL;
-    s_mem_segment* seg = s_mem_arena_segment_from_ptr(_arena, _ptr);
+    s_mem_segment* seg = s_memory_arena_segment_from_ptr(_arena, _ptr);
     if (seg == NULL) return NULL;
     const sz header_size = s_mem_block_size();
     const u8* ptr = (const u8*)_ptr;
@@ -213,7 +213,7 @@ static inline s_mem_block* s_mem_arena_block_from_ptr(const s_mem_arena* _arena,
     return (s_mem_block*)(ptr - header_size);
 }
 
-static inline b8 s_mem_arena_grow(s_mem_arena* _arena, sz _min_capacity) {
+static inline b8 s_memory_arena_grow(s_memory_arena* _arena, sz _min_capacity) {
     if (_arena == NULL) return false;
     sz new_cap = _min_capacity;
     if (_arena->seg_tail != NULL) {
@@ -243,20 +243,20 @@ static inline b8 s_mem_arena_grow(s_mem_arena* _arena, sz _min_capacity) {
     return true;
 }
 
-static inline void* s_mem_alloc(s_mem_arena* _arena, sz _size, const char* _file, i32 _line) {
+static inline void* s_mem_alloc(s_memory_arena* _arena, sz _size, const char* _file, i32 _line) {
     if (_arena == NULL || _size == 0) return NULL;
     const sz header_size = s_mem_block_size();
     const sz total = s_mem_align_up(header_size + _size, S_MEM_ALIGNMENT);
 
     s_mem_segment* seg = _arena->seg_tail;
     if (seg == NULL) {
-        if (!s_mem_arena_grow(_arena, total)) return NULL;
+        if (!s_memory_arena_grow(_arena, total)) return NULL;
         seg = _arena->seg_tail;
     }
 
     sz aligned_offset = s_mem_align_up(seg->offset, S_MEM_ALIGNMENT);
     if (aligned_offset + total > seg->capacity) {
-        if (!s_mem_arena_grow(_arena, total)) return NULL;
+        if (!s_memory_arena_grow(_arena, total)) return NULL;
         seg = _arena->seg_tail;
         aligned_offset = s_mem_align_up(seg->offset, S_MEM_ALIGNMENT);
         if (aligned_offset + total > seg->capacity) return NULL;
@@ -283,14 +283,14 @@ static inline void* s_mem_alloc(s_mem_arena* _arena, sz _size, const char* _file
     return (void*)((u8*)block + header_size);
 }
 
-static inline b8 s_mem_free(s_mem_arena* _arena, void* _ptr, const char* _file, i32 _line) {
+static inline b8 s_mem_free(s_memory_arena* _arena, void* _ptr, const char* _file, i32 _line) {
     (void)_file;
     (void)_line;
     if (_ptr == NULL) return true;
     if (_arena == NULL) return false;
-    if (!s_mem_arena_contains(_arena, _ptr)) return false;
+    if (!s_memory_arena_contains(_arena, _ptr)) return false;
 
-    s_mem_block* block = s_mem_arena_block_from_ptr(_arena, _ptr);
+    s_mem_block* block = s_memory_arena_block_from_ptr(_arena, _ptr);
     if (block == NULL) return false;
     if (block->freed) return false;
 
@@ -300,7 +300,7 @@ static inline b8 s_mem_free(s_mem_arena* _arena, void* _ptr, const char* _file, 
     return true;
 }
 
-static inline void* s_mem_calloc(s_mem_arena* _arena, sz _count, sz _size, const char* _file, i32 _line) {
+static inline void* s_mem_calloc(s_memory_arena* _arena, sz _count, sz _size, const char* _file, i32 _line) {
     if (_count == 0 || _size == 0) return NULL;
     if (_count > (SIZE_MAX / _size)) return NULL;
     sz total = _count * _size;
@@ -310,14 +310,14 @@ static inline void* s_mem_calloc(s_mem_arena* _arena, sz _count, sz _size, const
     return ptr;
 }
 
-static inline void* s_mem_realloc(s_mem_arena* _arena, void* _ptr, sz _size, const char* _file, i32 _line) {
+static inline void* s_mem_realloc(s_memory_arena* _arena, void* _ptr, sz _size, const char* _file, i32 _line) {
     if (_ptr == NULL) return s_mem_alloc(_arena, _size, _file, _line);
     if (_size == 0) {
         s_mem_free(_arena, _ptr, _file, _line);
         return NULL;
     }
     if (_arena == NULL) return NULL;
-    s_mem_block* block = s_mem_arena_block_from_ptr(_arena, _ptr);
+    s_mem_block* block = s_memory_arena_block_from_ptr(_arena, _ptr);
     if (block == NULL) return NULL;
     if (block->freed) return NULL;
 
@@ -329,7 +329,7 @@ static inline void* s_mem_realloc(s_mem_arena* _arena, void* _ptr, sz _size, con
     return next;
 }
 
-static inline s_mem_stats s_mem_arena_get_stats(const s_mem_arena* _arena) {
+static inline s_mem_stats s_memory_arena_get_stats(const s_memory_arena* _arena) {
     s_mem_stats stats = {0};
     if (_arena == NULL) return stats;
     stats.alloc_count = _arena->alloc_count;
@@ -352,17 +352,17 @@ static inline s_mem_stats s_mem_arena_get_stats(const s_mem_arena* _arena) {
     return stats;
 }
 
-static inline sz s_mem_arena_active_count(const s_mem_arena* _arena) {
+static inline sz s_memory_arena_active_count(const s_memory_arena* _arena) {
     if (_arena == NULL) return 0;
     return _arena->alloc_count - _arena->free_count;
 }
 
-static inline sz s_mem_arena_active_bytes(const s_mem_arena* _arena) {
+static inline sz s_memory_arena_active_bytes(const s_memory_arena* _arena) {
     if (_arena == NULL) return 0;
     return _arena->bytes_allocated - _arena->bytes_freed;
 }
 
-static inline sz s_mem_arena_bytes_for_file(const s_mem_arena* _arena, const char* _file) {
+static inline sz s_memory_arena_bytes_for_file(const s_memory_arena* _arena, const char* _file) {
     if (_arena == NULL || _file == NULL) return 0;
     sz total = 0;
     const s_mem_block* block = _arena->block_head;
@@ -375,7 +375,7 @@ static inline sz s_mem_arena_bytes_for_file(const s_mem_arena* _arena, const cha
     return total;
 }
 
-static inline sz s_mem_arena_bytes_for_line(const s_mem_arena* _arena, const char* _file, i32 _line) {
+static inline sz s_memory_arena_bytes_for_line(const s_memory_arena* _arena, const char* _file, i32 _line) {
     if (_arena == NULL || _file == NULL) return 0;
     sz total = 0;
     const s_mem_block* block = _arena->block_head;
@@ -388,14 +388,14 @@ static inline sz s_mem_arena_bytes_for_line(const s_mem_arena* _arena, const cha
     return total;
 }
 
-static inline void s_mem_arena_dump(const s_mem_arena* _arena, FILE* _out, b8 _include_freed) {
+static inline void s_memory_arena_dump(const s_memory_arena* _arena, FILE* _out, b8 _include_freed) {
     if (_out == NULL) _out = stderr;
     if (_arena == NULL) {
-        fprintf(_out, "s_mem_arena_dump: null arena\n");
+        fprintf(_out, "s_memory_arena_dump: null arena\n");
         return;
     }
-    s_mem_stats stats = s_mem_arena_get_stats(_arena);
-    fprintf(_out, "s_mem_arena_dump: capacity=%zu used=%zu allocs=%zu frees=%zu\n",
+    s_mem_stats stats = s_memory_arena_get_stats(_arena);
+    fprintf(_out, "s_memory_arena_dump: capacity=%zu used=%zu allocs=%zu frees=%zu\n",
         stats.capacity, stats.used, stats.alloc_count, stats.free_count);
     const s_mem_block* block = _arena->block_head;
     const sz header_size = s_mem_block_size();
@@ -410,10 +410,10 @@ static inline void s_mem_arena_dump(const s_mem_arena* _arena, FILE* _out, b8 _i
     }
 }
 
-static inline b8 s_mem_arena_report_leaks(const s_mem_arena* _arena, FILE* _out) {
+static inline b8 s_memory_arena_report_leaks(const s_memory_arena* _arena, FILE* _out) {
     if (_out == NULL) _out = stderr;
     if (_arena == NULL) {
-        fprintf(_out, "s_mem_arena_report_leaks: null arena\n");
+        fprintf(_out, "s_memory_arena_report_leaks: null arena\n");
         return false;
     }
     sz leak_count = 0;

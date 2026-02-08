@@ -83,15 +83,15 @@ int main(void) {
 #include "s_memory.h"
 
 int main(void) {
-    s_mem_arena arena = {0};
-    s_mem_arena_init(&arena, 1024 * 1024);
+    s_memory_arena arena = {0};
+    s_memory_arena_init(&arena, 1024 * 1024);
 
     char* msg = (char*)s_malloc(&arena, 32);
     if (msg == NULL) return 1;
     s_free(&arena, msg);
 
-    s_mem_arena_report_leaks(&arena, NULL);
-    s_mem_arena_release(&arena);
+    s_memory_arena_report_leaks(&arena, NULL);
+    s_memory_arena_release(&arena);
     return 0;
 }
 ```

@@ -1,10 +1,10 @@
-#include "s_memory.h"
+#include "../s_memory.h"
 #include <stdio.h>
 #include <string.h>
 
 int main(void) {
-    s_mem_arena arena = {0};
-    s_mem_arena_init(&arena, 1024);
+    s_memory_arena arena = {0};
+    s_memory_arena_init(&arena, 1024);
 
     const char* msg = "hello";
     char* buf = (char*)s_malloc(&arena, 32);
@@ -18,7 +18,7 @@ int main(void) {
     printf("grow=%s\n", grow);
 
     s_free(&arena, grow);
-    s_mem_arena_report_leaks(&arena, NULL);
-    s_mem_arena_release(&arena);
+    s_memory_arena_report_leaks(&arena, NULL);
+    s_memory_arena_release(&arena);
     return 0;
 }
