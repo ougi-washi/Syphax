@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSVC
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build and run examples (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          cc -std=c11 -Wall -Wextra -pedantic -I. examples/types.c -o examples/types
+          cc -std=c11 -Wall -Wextra -pedantic -I. examples/array.c -o examples/array
+          cc -std=c11 -Wall -Wextra -pedantic -I. examples/files.c -o examples/files
+          cc -std=c11 -Wall -Wextra -pedantic -I. examples/json.c -o examples/json
+          cc -std=c11 -Wall -Wextra -pedantic -I. examples/thread.c -o examples/thread -pthread
+          ./examples/types
+          ./examples/array
+          ./examples/files
+          ./examples/json
+          ./examples/thread
+
+      - name: Build and run examples (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          cl /nologo /W3 /TC /I. examples\types.c /Fe:examples\types.exe
+          cl /nologo /W3 /TC /I. examples\array.c /Fe:examples\array.exe
+          cl /nologo /W3 /TC /I. examples\files.c /Fe:examples\files.exe
+          cl /nologo /W3 /TC /I. examples\json.c /Fe:examples\json.exe
+          cl /nologo /W3 /TC /I. examples\thread.c /Fe:examples\thread.exe
+          examples\types.exe
+          examples\array.exe
+          examples\files.exe
+          examples\json.exe
+          examples\thread.exe
