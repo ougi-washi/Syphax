@@ -74,6 +74,17 @@
     s_assertf((_array)->size < (_array)->capacity, "s_array_add :: Array is full\n"); \
     (_array)->data[(_array)->size++] = _value;
 
+#define s_array_add_many(_array, _type, ...) \
+    do { \
+        _type _values[] = { __VA_ARGS__ }; \
+        sz _count = sizeof(_values) / sizeof(_values[0]); \
+        s_assertf((_array) != NULL, "s_array_add_many :: Array is null\n"); \
+        s_assertf((_array)->data != NULL, "s_array_add_many :: Array data is null\n"); \
+        s_assertf((_array)->size + _count <= (_array)->capacity, "s_array_add_many :: Array is full\n"); \
+        memcpy(&(_array)->data[(_array)->size], _values, sizeof(_values)); \
+        (_array)->size += _count; \
+    } while (0)
+
 #define s_array_remove_at(_array, _index) \
     s_assertf((_array) != NULL, "s_array_remove :: Array is null\n"); \
     s_assertf((_array)->data != NULL, "s_array_remove :: Array data is null\n"); \
