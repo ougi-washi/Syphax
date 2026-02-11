@@ -113,6 +113,23 @@ static inline void s_array_require(b8 _cond, const char* _msg) {
         } \
     } while (0)
 
+#define s_array_copy(_array_dest, _array_src) \
+    do { \
+        s_assertf((_array_dest) != NULL, "s_array_copy :: Destination array is null\n"); \
+        s_assertf((_array_src) != NULL, "s_array_copy :: Source array is null\n"); \
+        s_assertf(sizeof(*((_array_dest)->data)) == sizeof(*((_array_src)->data)), "s_array_copy :: Element type size mismatch\n"); \
+        sz _src_size = (_array_src)->size; \
+        if (_src_size > (_array_dest)->capacity) { \
+            s_array_resize((_array_dest), _src_size); \
+        } \
+        if (_src_size > 0) { \
+            s_assertf((_array_src)->data != NULL, "s_array_copy :: Source data is null\n"); \
+            s_assertf((_array_dest)->data != NULL, "s_array_copy :: Destination data is null\n"); \
+            memmove((_array_dest)->data, (_array_src)->data, sizeof(*((_array_dest)->data)) * _src_size); \
+        } \
+        (_array_dest)->size = _src_size; \
+    } while (0)
+
 #define s_array_increment(_array) \
     ( \
         s_array_require((_array) != NULL, "s_array_increment :: Array is null\n"), \

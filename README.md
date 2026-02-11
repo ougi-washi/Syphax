@@ -28,11 +28,19 @@ Snippets:
 #include "s_array.h"
 
 int main(void) {
-    s_array(int, values);
-    s_array_init(&values, 4);
-    s_array_add(&values, 10);
-    s_array_add(&values, 20);
-    s_array_clear(&values);
+    s_array(int, src);
+    s_array(int, dst);
+    
+    s_array_init(&src, 4);
+    s_array_init(&dst, 1);
+    
+    s_array_add(&src, 10);
+    s_array_add(&src, 20);
+    
+    s_array_copy(&dst, &src);
+    
+    s_array_clear(&src);
+    s_array_clear(&dst);
     return 0;
 }
 ```
