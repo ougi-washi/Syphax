@@ -86,6 +86,33 @@ static inline void s_array_require(b8 _cond, const char* _msg) {
         (_array)->capacity = 0; \
     } while (0)
 
+#define s_array_resize(_array, _new_capacity) \
+    do { \
+        s_assertf((_array) != NULL, "s_array_resize :: Array is null\n"); \
+        sz _target_capacity = (sz)(_new_capacity); \
+        if (_target_capacity == 0) { \
+            if ((_array)->data != NULL) { \
+                free((_array)->data); \
+            } \
+            (_array)->data = NULL; \
+            (_array)->size = 0; \
+            (_array)->capacity = 0; \
+        } else { \
+            s_assertf(_target_capacity <= (SIZE_MAX / sizeof(*((_array)->data))), "s_array_resize :: Capacity overflow\n"); \
+            sz _old_capacity = (_array)->capacity; \
+            void* _new_data = realloc((_array)->data, sizeof(*((_array)->data)) * _target_capacity); \
+            s_assertf(_new_data != NULL, "s_array_resize :: Failed to allocate memory\n"); \
+            (_array)->data = _new_data; \
+            if (_target_capacity > _old_capacity) { \
+                memset(&(_array)->data[_old_capacity], 0, sizeof(*((_array)->data)) * (_target_capacity - _old_capacity)); \
+            } \
+            (_array)->capacity = _target_capacity; \
+            if ((_array)->size > _target_capacity) { \
+                (_array)->size = _target_capacity; \
+            } \
+        } \
+    } while (0)
+
 #define s_array_increment(_array) \
     ( \
         s_array_require((_array) != NULL, "s_array_increment :: Array is null\n"), \
