@@ -19,6 +19,9 @@
  * s_array_increment(&my_array);
  * s_array_handle(&my_array, dense_index);
  * s_array_get(&my_array, handle);
+ * s_array_copy(&dst_array, &src_array);
+ * s_foreach(&my_array, it_ptr) { ... }
+ * s_foreach_reverse(&my_array, it_ptr) { ... }
  * s_array_remove(&my_array, handle);
  * s_array_remove_ordered(&my_array, handle);
  * s_array_clear(&my_array);
@@ -29,21 +32,21 @@
 	    int x;
 	    int y;
 	} my_struct;
-	
+
 	s_array(my_struct, my_array);
 	s_array_init(&my_array);
-	
+
 	my_struct value = { .x = 1, .y = 2 };
 	s_handle h = s_array_add(&my_array, value);
 	my_struct* p = s_array_get(&my_array, h);
 	p->x = 3;
-	
+
 	for (sz i = 0; i < s_array_get_size(&my_array); ++i) {
 	    s_handle hi = s_array_handle(&my_array, (u32)i);
 	    my_struct* item = s_array_get(&my_array, hi);
 	    printf("%d %d\n", item->x, item->y);
 	}
-	
+
 	s_array_clear(&my_array);
 */
 
@@ -67,24 +70,24 @@ static inline u32 s_handle_gen (s_handle h) { return (u32)(h >> 32); }
 static inline s_handle s_handle_make(u32 slot, u32 gen) { return ((u64)gen << 32) | (u64)slot; }
 
 typedef struct s_array_base {
-    // packed elements 
-    uc8* data;      		// byte buffer of T[size] 
-    u32* dense_to_slot;     // dense index -> slot 
+    // packed elements
+    uc8* data;              // byte buffer of T[size]
+    u32* dense_to_slot;     // dense index -> slot
 
-    // slot tables 
-    u32* slot_to_dense;     // slot -> dense index 
-    u32* gen;               // slot generation 
+    // slot tables
+    u32* slot_to_dense;     // slot -> dense index
+    u32* gen;               // slot generation
 
-    // free slot stack 
+    // free slot stack
     u32* free_slots;
     u32  free_count;
     u32  free_cap;
 
-    sz size;                // alive count (packed) 
-    sz capacity;            // element capacity of packed arrays 
+    sz size;                // alive count (packed)
+    sz capacity;            // element capacity of packed arrays
 
-    u32 slot_count;         // slots allocated so far 
-    u32 slot_cap;           // capacity of slot arrays 
+    u32 slot_count;         // slots allocated so far
+    u32 slot_cap;           // capacity of slot arrays
 } s_array_base;
 
 static inline void s_array_base_zero(s_array_base* a) { memset(a, 0, sizeof(*a)); }
@@ -119,10 +122,10 @@ static inline void s_array_reserve_slots(s_array_base* a, u32 need)
     a->gen          = (u32*)realloc(a->gen,          sizeof(u32) * new_cap);
     s_assertf(a->slot_to_dense && a->gen, "s_array :: OOM slot tables\n");
 
-    // init new entries 
+    // init new entries
     for (u32 i = a->slot_cap; i < new_cap; ++i) {
         a->slot_to_dense[i] = S_U32_INVALID;
-        a->gen[i] = 1u; // generation never 0 (keeps handle 0 as null) 
+        a->gen[i] = 1u; // generation never 0 (keeps handle 0 as null)
     }
 
     a->slot_cap = new_cap;
@@ -208,14 +211,14 @@ static inline void s_array_retire_slot(s_array_base* a, u32 slot)
 {
     a->slot_to_dense[slot] = S_U32_INVALID;
 
-    a->gen[slot]++;          // bump generation to invalidate old handles 
+    a->gen[slot]++;          // bump generation to invalidate old handles
     if (a->gen[slot] == 0u) a->gen[slot] = 1u;
 
     s_array_reserve_free(a, a->free_count + 1);
     a->free_slots[a->free_count++] = slot;
 }
 
-// O(1) swap-remove: FAST, order NOT preserved 
+// O(1) swap-remove: FAST, order NOT preserved
 static inline b8 s_array_remove_fast_base(s_array_base* a, sz elem_size, s_handle h)
 {
     if (h == S_HANDLE_NULL) return 0;
@@ -231,7 +234,7 @@ static inline b8 s_array_remove_fast_base(s_array_base* a, sz elem_size, s_handl
 
     u32 last = (u32)(a->size - 1);
     if (dense != last) {
-        // move last element into dense 
+        // move last element into dense
         memcpy(a->data + (sz)dense * elem_size,
                a->data + (sz)last  * elem_size,
                elem_size);
@@ -246,7 +249,7 @@ static inline b8 s_array_remove_fast_base(s_array_base* a, sz elem_size, s_handl
     return 1;
 }
 
-// O(n) ordered remove: preserves packed order 
+// O(n) ordered remove: preserves packed order
 static inline b8 s_array_remove_ordered_base(s_array_base* a, sz elem_size, s_handle h)
 {
     if (h == S_HANDLE_NULL) return 0;
@@ -262,17 +265,17 @@ static inline b8 s_array_remove_ordered_base(s_array_base* a, sz elem_size, s_ha
 
     u32 last = (u32)(a->size - 1);
     if (dense != last) {
-        // shift data left 
+        // shift data left
         memmove(a->data + (sz)dense * elem_size,
                 a->data + (sz)(dense + 1) * elem_size,
                 (sz)(last - dense) * elem_size);
 
-        // shift dense_to_slot left 
+        // shift dense_to_slot left
         memmove(&a->dense_to_slot[dense],
                 &a->dense_to_slot[dense + 1],
                 sizeof(u32) * (sz)(last - dense));
 
-        // fix slot_to_dense for all shifted items 
+        // fix slot_to_dense for all shifted items
         for (u32 i = dense; i < last; ++i) {
             u32 s = a->dense_to_slot[i];
             a->slot_to_dense[s] = i;
@@ -294,6 +297,48 @@ static inline void s_array_clear_base(s_array_base* a)
     s_array_base_zero(a);
 }
 
+static inline void s_array_copy_base(s_array_base* dst, const s_array_base* src, sz elem_size)
+{
+    if (dst == src) return;
+    s_array_clear_base(dst);
+    if (!src) return;
+
+    dst->size = src->size;
+    dst->capacity = src->capacity;
+    dst->slot_count = src->slot_count;
+    dst->slot_cap = src->slot_cap;
+    dst->free_count = src->free_count;
+    dst->free_cap = src->free_cap;
+
+    if (dst->capacity) {
+        s_assertf(elem_size != 0, "s_array :: elem_size=0\n");
+        s_assertf(dst->capacity <= (SIZE_MAX / elem_size), "s_array :: data overflow\n");
+
+        dst->data = (uc8*)malloc(elem_size * dst->capacity);
+        dst->dense_to_slot = (u32*)malloc(sizeof(u32) * dst->capacity);
+        s_assertf(dst->data && dst->dense_to_slot, "s_array :: OOM copy dense\n");
+
+        if (dst->size) {
+            memcpy(dst->data, src->data, elem_size * dst->size);
+            memcpy(dst->dense_to_slot, src->dense_to_slot, sizeof(u32) * dst->size);
+        }
+    }
+
+    if (dst->slot_cap) {
+        dst->slot_to_dense = (u32*)malloc(sizeof(u32) * dst->slot_cap);
+        dst->gen = (u32*)malloc(sizeof(u32) * dst->slot_cap);
+        s_assertf(dst->slot_to_dense && dst->gen, "s_array :: OOM copy slots\n");
+        memcpy(dst->slot_to_dense, src->slot_to_dense, sizeof(u32) * dst->slot_cap);
+        memcpy(dst->gen, src->gen, sizeof(u32) * dst->slot_cap);
+    }
+
+    if (dst->free_cap) {
+        dst->free_slots = (u32*)malloc(sizeof(u32) * dst->free_cap);
+        s_assertf(dst->free_slots, "s_array :: OOM copy free\n");
+        if (dst->free_count) memcpy(dst->free_slots, src->free_slots, sizeof(u32) * dst->free_count);
+    }
+}
+
 // USAGE:
 
 #define s_array(_type, _name) \
@@ -308,30 +353,43 @@ static inline void s_array_clear_base(s_array_base* a)
 #define s_array_get_size(_arr)     ((_arr)->b.size)
 #define s_array_get_capacity(_arr) ((_arr)->b.capacity)
 
-// Packed pointer to contiguous data (safe for iteration; don't keep across mutations) 
-#define s_array_get_data(_arr) ((decltype((_arr)->tag))((void*)((_arr)->b.data)))
+// Packed pointer to contiguous data (safe for iteration; don't keep across mutations)
+#define s_array_get_data(_arr) ((_arr)->tag = (void*)((_arr)->b.data), (_arr)->tag)
 
-// Returns handle. _value must be an lvalue (so &(_value) is valid). 
+// Returns handle. _value must be an lvalue (so &(_value) is valid).
 #define s_array_add(_arr, _value_lvalue) \
     s_array_add_copy(&(_arr)->b, sizeof(*(_arr)->tag), (const void*)&(_value_lvalue))
 
-// Returns handle to a zeroed element; fill it via s_array_get() 
+// Returns handle to a zeroed element; fill it via s_array_get()
 #define s_array_increment(_arr) \
     s_array_push_zero(&(_arr)->b, sizeof(*(_arr)->tag))
 
-// Dense index -> handle 
+// Dense index -> handle
 #define s_array_handle(_arr, _dense_index) \
     s_array_handle_at(&(_arr)->b, (u32)(_dense_index))
 
-// Handle -> pointer (NULL if invalid/stale) 
+// Handle -> pointer (NULL if invalid/stale)
 #define s_array_get(_arr, _handle) \
-    ((decltype((_arr)->tag))s_array_get_ptr(&(_arr)->b, sizeof(*(_arr)->tag), (_handle)))
+    ((_arr)->tag = s_array_get_ptr(&(_arr)->b, sizeof(*(_arr)->tag), (_handle)), (_arr)->tag)
 
-// Swap-remove by handle (unordered but fast) 
+#define s_array_copy(_dst, _src) \
+    do { s_array_copy_base(&(_dst)->b, &(_src)->b, sizeof(*(_src)->tag)); (_dst)->tag = NULL; } while (0)
+
+#define s_foreach(_arr, _it) \
+    for (sz _it##_index = 0, _it##_count = s_array_get_size(_arr); _it##_index < _it##_count; ++_it##_index) \
+        for (s_handle _it##_handle = s_array_handle((_arr), (u32)_it##_index); _it##_handle != S_HANDLE_NULL; _it##_handle = S_HANDLE_NULL) \
+            for ((_it) = s_array_get((_arr), _it##_handle); (_it) != NULL; (_it) = NULL)
+
+#define s_foreach_reverse(_arr, _it) \
+    for (sz _it##_count = s_array_get_size(_arr), _it##_index = _it##_count; _it##_index-- > 0; ) \
+        for (s_handle _it##_handle = s_array_handle((_arr), (u32)_it##_index); _it##_handle != S_HANDLE_NULL; _it##_handle = S_HANDLE_NULL) \
+            for ((_it) = s_array_get((_arr), _it##_handle); (_it) != NULL; (_it) = NULL)
+
+// Swap-remove by handle (unordered but fast)
 #define s_array_remove(_arr, _handle) \
     s_array_remove_fast_base(&(_arr)->b, sizeof(*(_arr)->tag), (_handle))
 
-// Remove (orered but slow O(n)) 
+// Remove (orered but slow O(n))
 #define s_array_remove_ordered(_arr, _handle) \
     s_array_remove_ordered_base(&(_arr)->b, sizeof(*(_arr)->tag), (_handle))
 
