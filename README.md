@@ -26,21 +26,26 @@ Snippets:
 
 ```c
 #include "s_array.h"
+#include <stdio.h>
 
 int main(void) {
-    s_array(int, src);
-    s_array(int, dst);
-    
-    s_array_init(&src, 4);
-    s_array_init(&dst, 1);
-    
-    s_array_add(&src, 10);
-    s_array_add(&src, 20);
-    
-    s_array_copy(&dst, &src);
-    
-    s_array_clear(&src);
-    s_array_clear(&dst);
+    s_array(int, scores);
+
+    int a = 7;
+    int b = 12;
+    s_handle ha = s_array_add(&scores, a);
+    s_handle hb = s_array_add(&scores, b);
+
+    int* pa = s_array_get(&scores, ha);
+    if (pa) *pa = 8;
+
+    for (sz i = 0; i < s_array_get_size(&scores); ++i) {
+        s_handle hi = s_array_handle(&scores, (u32)i);
+        int* item = s_array_get(&scores, hi);
+        if (item) printf("score[%zu] = %d\n", i, *item);
+    }
+
+    s_array_clear(&scores);
     return 0;
 }
 ```
