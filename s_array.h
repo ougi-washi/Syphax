@@ -15,6 +15,7 @@
  * s_array_get_size(&my_array);
  * s_array_get_capacity(&my_array);
  * s_array_get_data(&my_array);
+ * s_array_reserve(&my_array, capacity);
  * s_array_add(&my_array, value);
  * s_array_increment(&my_array);
  * s_array_handle(&my_array, dense_index);
@@ -92,11 +93,23 @@ typedef struct s_array_base {
 
 static inline void s_array_base_zero(s_array_base* a) { memset(a, 0, sizeof(*a)); }
 
-static inline void s_array_reserve(s_array_base* a, sz elem_size, sz dense_need, u32 slot_need, u32 free_need)
+static inline void s_array_reserve_base(s_array_base* a, sz elem_size, sz need)
 {
-    if (dense_need > a->capacity) {
+    s_assertf(need <= (sz)UINT32_MAX, "s_array :: reserve need too large for u32\n");
+
+    u32 slot_need = a->slot_count;
+    if (need > a->size) {
+        sz add_need = need - a->size;
+        if (add_need > (sz)a->free_count) {
+            sz extra_slots = add_need - (sz)a->free_count;
+            s_assertf(extra_slots <= (sz)(UINT32_MAX - a->slot_count), "s_array :: too many slots for u32\n");
+            slot_need = a->slot_count + (u32)extra_slots;
+        }
+    }
+
+    if (need > a->capacity) {
         sz new_dense_cap = a->capacity ? (a->capacity * 2) : (sz)16;
-        if (new_dense_cap < dense_need) new_dense_cap = dense_need;
+        if (new_dense_cap < need) new_dense_cap = need;
 
         s_assertf(elem_size != 0, "s_array :: elem_size=0\n");
         s_assertf(new_dense_cap <= (SIZE_MAX / elem_size), "s_array :: data overflow\n");
@@ -126,16 +139,6 @@ static inline void s_array_reserve(s_array_base* a, sz elem_size, sz dense_need,
 
         a->slot_cap = new_slot_cap;
     }
-
-    if (free_need > a->free_cap) {
-        u32 new_free_cap = a->free_cap ? (a->free_cap * 2u) : 16u;
-        if (new_free_cap < free_need) new_free_cap = free_need;
-
-        a->free_slots = (u32*)realloc(a->free_slots, sizeof(u32) * new_free_cap);
-        s_assertf(a->free_slots != NULL, "s_array :: OOM free_slots\n");
-
-        a->free_cap = new_free_cap;
-    }
 }
 
 static inline u32 s_array_alloc_slot(s_array_base* a)
@@ -157,7 +160,7 @@ static inline s_handle s_array_push_zero(s_array_base* a, sz elem_size)
     s_assertf(a->size <= (sz)UINT32_MAX, "s_array :: too many elems for u32\n");
     s_assertf(a->free_count || a->slot_count < UINT32_MAX, "s_array :: too many slots for u32\n");
 
-    s_array_reserve(a, elem_size, a->size + 1, a->slot_count + (a->free_count ? 0u : 1u), 0u);
+    s_array_reserve_base(a, elem_size, a->size + 1);
 
     u32 slot  = s_array_alloc_slot(a);
     u32 dense = (u32)a->size++;
@@ -211,7 +214,14 @@ static inline void s_array_retire_slot(s_array_base* a, u32 slot)
     if (a->gen[slot] == 0u) a->gen[slot] = 1u;
 
     s_assertf(a->free_count < UINT32_MAX, "s_array :: too many free slots for u32\n");
-    s_array_reserve(a, 0, 0, 0, a->free_count + 1);
+    if (a->free_count + 1 > a->free_cap) {
+        u32 new_free_cap = a->free_cap ? (a->free_cap * 2u) : 16u;
+        if (new_free_cap < a->free_count + 1) new_free_cap = a->free_count + 1;
+
+        a->free_slots = (u32*)realloc(a->free_slots, sizeof(u32) * new_free_cap);
+        s_assertf(a->free_slots != NULL, "s_array :: OOM free_slots\n");
+        a->free_cap = new_free_cap;
+    }
     a->free_slots[a->free_count++] = slot;
 }
 
@@ -350,8 +360,14 @@ static inline void s_array_copy_base(s_array_base* dst, const s_array_base* src,
 #define s_array_get_size(_arr)     ((_arr)->b.size)
 #define s_array_get_capacity(_arr) ((_arr)->b.capacity)
 
-// Packed pointer to contiguous data (safe for iteration; don't keep across mutations)
+// Packed pointer to contiguous data (safe for iteration; don't keep across mutations).
+// Any mutation (add/remove/reserve/clear/copy) may invalidate previously fetched pointers.
 #define s_array_get_data(_arr) ((_arr)->tag = (void*)((_arr)->b.data), (_arr)->tag)
+
+// Reserve packed capacity (and matching slot capacity) to at least _need elements.
+// Preserves packed order and keeps existing valid handles valid.
+#define s_array_reserve(_arr, _need) \
+    s_array_reserve_base(&(_arr)->b, sizeof(*(_arr)->tag), (sz)(_need))
 
 // Returns handle. _value must be an lvalue (so &(_value) is valid).
 #define s_array_add(_arr, _value_lvalue) \
