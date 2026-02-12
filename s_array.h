@@ -92,56 +92,50 @@ typedef struct s_array_base {
 
 static inline void s_array_base_zero(s_array_base* a) { memset(a, 0, sizeof(*a)); }
 
-static inline void s_array_reserve_dense(s_array_base* a, sz elem_size, sz need)
+static inline void s_array_reserve(s_array_base* a, sz elem_size, sz dense_need, u32 slot_need, u32 free_need)
 {
-    if (need <= a->capacity) return;
+    if (dense_need > a->capacity) {
+        sz new_dense_cap = a->capacity ? (a->capacity * 2) : (sz)16;
+        if (new_dense_cap < dense_need) new_dense_cap = dense_need;
 
-    sz new_cap = a->capacity ? (a->capacity * 2) : (sz)16;
-    if (new_cap < need) new_cap = need;
+        s_assertf(elem_size != 0, "s_array :: elem_size=0\n");
+        s_assertf(new_dense_cap <= (SIZE_MAX / elem_size), "s_array :: data overflow\n");
 
-    s_assertf(elem_size != 0, "s_array :: elem_size=0\n");
-    s_assertf(new_cap <= (SIZE_MAX / elem_size), "s_array :: data overflow\n");
+        a->data = (unsigned char*)realloc(a->data, elem_size * new_dense_cap);
+        s_assertf(a->data != NULL, "s_array :: OOM data\n");
 
-    a->data = (unsigned char*)realloc(a->data, elem_size * new_cap);
-    s_assertf(a->data != NULL, "s_array :: OOM data\n");
+        a->dense_to_slot = (u32*)realloc(a->dense_to_slot, sizeof(u32) * new_dense_cap);
+        s_assertf(a->dense_to_slot != NULL, "s_array :: OOM dense_to_slot\n");
 
-    a->dense_to_slot = (u32*)realloc(a->dense_to_slot, sizeof(u32) * new_cap);
-    s_assertf(a->dense_to_slot != NULL, "s_array :: OOM dense_to_slot\n");
-
-    a->capacity = new_cap;
-}
-
-static inline void s_array_reserve_slots(s_array_base* a, u32 need)
-{
-    if (need <= a->slot_cap) return;
-
-    u32 new_cap = a->slot_cap ? (a->slot_cap * 2u) : 16u;
-    if (new_cap < need) new_cap = need;
-
-    a->slot_to_dense = (u32*)realloc(a->slot_to_dense, sizeof(u32) * new_cap);
-    a->gen          = (u32*)realloc(a->gen,          sizeof(u32) * new_cap);
-    s_assertf(a->slot_to_dense && a->gen, "s_array :: OOM slot tables\n");
-
-    // init new entries
-    for (u32 i = a->slot_cap; i < new_cap; ++i) {
-        a->slot_to_dense[i] = S_U32_INVALID;
-        a->gen[i] = 1u; // generation never 0 (keeps handle 0 as null)
+        a->capacity = new_dense_cap;
     }
 
-    a->slot_cap = new_cap;
-}
+    if (slot_need > a->slot_cap) {
+        u32 new_slot_cap = a->slot_cap ? (a->slot_cap * 2u) : 16u;
+        if (new_slot_cap < slot_need) new_slot_cap = slot_need;
 
-static inline void s_array_reserve_free(s_array_base* a, u32 need)
-{
-    if (need <= a->free_cap) return;
+        a->slot_to_dense = (u32*)realloc(a->slot_to_dense, sizeof(u32) * new_slot_cap);
+        a->gen = (u32*)realloc(a->gen, sizeof(u32) * new_slot_cap);
+        s_assertf(a->slot_to_dense && a->gen, "s_array :: OOM slot tables\n");
 
-    u32 new_cap = a->free_cap ? (a->free_cap * 2u) : 16u;
-    if (new_cap < need) new_cap = need;
+        // init new entries
+        for (u32 i = a->slot_cap; i < new_slot_cap; ++i) {
+            a->slot_to_dense[i] = S_U32_INVALID;
+            a->gen[i] = 1u; // generation never 0 (keeps handle 0 as null)
+        }
 
-    a->free_slots = (u32*)realloc(a->free_slots, sizeof(u32) * new_cap);
-    s_assertf(a->free_slots != NULL, "s_array :: OOM free_slots\n");
+        a->slot_cap = new_slot_cap;
+    }
 
-    a->free_cap = new_cap;
+    if (free_need > a->free_cap) {
+        u32 new_free_cap = a->free_cap ? (a->free_cap * 2u) : 16u;
+        if (new_free_cap < free_need) new_free_cap = free_need;
+
+        a->free_slots = (u32*)realloc(a->free_slots, sizeof(u32) * new_free_cap);
+        s_assertf(a->free_slots != NULL, "s_array :: OOM free_slots\n");
+
+        a->free_cap = new_free_cap;
+    }
 }
 
 static inline u32 s_array_alloc_slot(s_array_base* a)
@@ -150,8 +144,9 @@ static inline u32 s_array_alloc_slot(s_array_base* a)
         return a->free_slots[--a->free_count];
     }
 
+    s_assertf(a->slot_count < UINT32_MAX, "s_array :: too many slots for u32\n");
     u32 slot = a->slot_count++;
-    s_array_reserve_slots(a, a->slot_count);
+    s_assertf(a->slot_count <= a->slot_cap, "s_array :: slot capacity not reserved\n");
     a->slot_to_dense[slot] = S_U32_INVALID;
     if (a->gen[slot] == 0u) a->gen[slot] = 1u;
     return slot;
@@ -160,8 +155,9 @@ static inline u32 s_array_alloc_slot(s_array_base* a)
 static inline s_handle s_array_push_zero(s_array_base* a, sz elem_size)
 {
     s_assertf(a->size <= (sz)UINT32_MAX, "s_array :: too many elems for u32\n");
+    s_assertf(a->free_count || a->slot_count < UINT32_MAX, "s_array :: too many slots for u32\n");
 
-    s_array_reserve_dense(a, elem_size, a->size + 1);
+    s_array_reserve(a, elem_size, a->size + 1, a->slot_count + (a->free_count ? 0u : 1u), 0u);
 
     u32 slot  = s_array_alloc_slot(a);
     u32 dense = (u32)a->size++;
@@ -214,7 +210,8 @@ static inline void s_array_retire_slot(s_array_base* a, u32 slot)
     a->gen[slot]++;          // bump generation to invalidate old handles
     if (a->gen[slot] == 0u) a->gen[slot] = 1u;
 
-    s_array_reserve_free(a, a->free_count + 1);
+    s_assertf(a->free_count < UINT32_MAX, "s_array :: too many free slots for u32\n");
+    s_array_reserve(a, 0, 0, 0, a->free_count + 1);
     a->free_slots[a->free_count++] = slot;
 }
 
