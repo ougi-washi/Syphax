@@ -32,20 +32,108 @@ typedef char c8;
 typedef unsigned char uc8;
 typedef size_t sz;
 
-#ifndef SYPHAX_PRECISION
-#define SYPHAX_PRECISION f32
+#ifndef S_PRECISION
+#define S_PRECISION f32
 #endif
 
-typedef struct { SYPHAX_PRECISION x, y; } s_vec2;
-typedef struct { SYPHAX_PRECISION x, y, z; } s_vec3;
-typedef struct { SYPHAX_PRECISION x, y, z, w; } s_vec4;
-typedef struct { SYPHAX_PRECISION m[3][3]; } s_mat3;
-typedef struct { SYPHAX_PRECISION m[4][4]; } s_mat4;
+typedef struct { S_PRECISION x, y; } s_vec2;
+typedef struct { S_PRECISION x, y, z; } s_vec3;
+typedef struct { S_PRECISION x, y, z, w; } s_vec4;
+typedef struct { S_PRECISION m[3][3]; } s_mat3;
+typedef struct { S_PRECISION m[4][4]; } s_mat4;
 
 #define s_vec(_vec_size, ...) (s_vec##_vec_size){ __VA_ARGS__ }
 #define s_min(_a_vec, _b_vec) ((_a_vec) < (_b_vec) ? (_a_vec) : (_b_vec))
 #define s_max(_a_vec, _b_vec) ((_a_vec) > (_b_vec) ? (_a_vec) : (_b_vec))
 #define PI 3.14159265359
+
+#ifndef S_EPSILON
+#define S_EPSILON ((S_PRECISION)1e-6f)
+#endif
+
+static inline b8 s_f32_equal(const f32 _a, const f32 _b, const f32 _eps) {
+    return fabsf(_a - _b) <= fabsf(_eps);
+}
+
+static inline b8 s_f64_equal(const f64 _a, const f64 _b, const f64 _eps) {
+    return fabs(_a - _b) <= fabs(_eps);
+}
+
+static inline b8 s_precision_equal(const S_PRECISION _a, const S_PRECISION _b, const S_PRECISION _eps) {
+    return fabs(_a - _b) <= fabs(_eps);
+}
+
+static inline b8 s_vec2_equal(const s_vec2* _a, const s_vec2* _b, const S_PRECISION _eps) {
+    return s_precision_equal(_a->x, _b->x, _eps)
+        && s_precision_equal(_a->y, _b->y, _eps);
+}
+
+static inline b8 s_vec3_equal(const s_vec3* _a, const s_vec3* _b, const S_PRECISION _eps) {
+    return s_precision_equal(_a->x, _b->x, _eps)
+        && s_precision_equal(_a->y, _b->y, _eps)
+        && s_precision_equal(_a->z, _b->z, _eps);
+}
+
+static inline b8 s_vec4_equal(const s_vec4* _a, const s_vec4* _b, const S_PRECISION _eps) {
+    return s_precision_equal(_a->x, _b->x, _eps)
+        && s_precision_equal(_a->y, _b->y, _eps)
+        && s_precision_equal(_a->z, _b->z, _eps)
+        && s_precision_equal(_a->w, _b->w, _eps);
+}
+
+static inline b8 s_mat3_equal(const s_mat3* _a, const s_mat3* _b, const S_PRECISION _eps) {
+    for (u8 row = 0; row < 3; row++) {
+        for (u8 col = 0; col < 3; col++) {
+            if (!s_precision_equal(_a->m[row][col], _b->m[row][col], _eps)) return false;
+        }
+    }
+    return true;
+}
+
+static inline b8 s_mat4_equal(const s_mat4* _a, const s_mat4* _b, const S_PRECISION _eps) {
+    for (u8 col = 0; col < 4; col++) {
+        for (u8 row = 0; row < 4; row++) {
+            if (!s_precision_equal(_a->m[col][row], _b->m[col][row], _eps)) return false;
+        }
+    }
+    return true;
+}
+
+static inline b8 se_f8_equal(const S_PRECISION _a, const S_PRECISION _b, const S_PRECISION _eps) {
+    return s_precision_equal(_a, _b, _eps);
+}
+
+static inline b8 se_f16_equal(const S_PRECISION _a, const S_PRECISION _b, const S_PRECISION _eps) {
+    return s_precision_equal(_a, _b, _eps);
+}
+
+static inline b8 se_f32_equal(const f32 _a, const f32 _b, const f32 _eps) {
+    return s_f32_equal(_a, _b, _eps);
+}
+
+static inline b8 se_f64_equal(const f64 _a, const f64 _b, const f64 _eps) {
+    return s_f64_equal(_a, _b, _eps);
+}
+
+static inline b8 se_vec2_equal(const s_vec2* _a, const s_vec2* _b, const S_PRECISION _eps) {
+    return s_vec2_equal(_a, _b, _eps);
+}
+
+static inline b8 se_vec3_equal(const s_vec3* _a, const s_vec3* _b, const S_PRECISION _eps) {
+    return s_vec3_equal(_a, _b, _eps);
+}
+
+static inline b8 se_vec4_equal(const s_vec4* _a, const s_vec4* _b, const S_PRECISION _eps) {
+    return s_vec4_equal(_a, _b, _eps);
+}
+
+static inline b8 se_mat3_equal(const s_mat3* _a, const s_mat3* _b, const S_PRECISION _eps) {
+    return s_mat3_equal(_a, _b, _eps);
+}
+
+static inline b8 se_mat4_equal(const s_mat4* _a, const s_mat4* _b, const S_PRECISION _eps) {
+    return s_mat4_equal(_a, _b, _eps);
+}
 
 // s_vec2
 #define s_vec2(_x, _y)                  (s_vec(2, (_x), (_y)))
@@ -62,12 +150,12 @@ typedef struct { SYPHAX_PRECISION m[4][4]; } s_mat4;
 #define s_vec2_from_angle(_vec)         (s_vec2(cosf(_vec), sinf(_vec)))
 #define s_vec2_to_angle(_vec)           (atan2f((_vec)->y, (_vec)->x))
 static inline s_vec2 s_vec2_normalize(const s_vec2* _vec) {
-    const SYPHAX_PRECISION len = s_vec2_length(_vec);
+    const S_PRECISION len = s_vec2_length(_vec);
     if (len == 0.0f) return s_vec2(0.0f, 0.0f);
     return s_vec2((_vec)->x / len, (_vec)->y / len);
 }
 static inline s_vec2 s_vec2_reflect(const s_vec2* _vec, const s_vec2* _n) {
-    const SYPHAX_PRECISION dot = s_vec2_dot(_vec, _n);
+    const S_PRECISION dot = s_vec2_dot(_vec, _n);
     return s_vec2(_vec->x - 2.0f * dot * _n->x, _vec->y - 2.0f * dot * _n->y);
 }
 
@@ -86,12 +174,12 @@ static inline s_vec2 s_vec2_reflect(const s_vec2* _vec, const s_vec2* _n) {
 #define s_vec3_from_angle(_vec)       (s_vec3(cosf(_vec), sinf(_vec), 0.0f))
 #define s_vec3_to_angle(_vec)         (atan2f((_vec)->y, (_vec)->x))
 static inline s_vec3 s_vec3_normalize(const s_vec3* _vec) {
-    const SYPHAX_PRECISION len = s_vec3_length(_vec);
+    const S_PRECISION len = s_vec3_length(_vec);
     if (len == 0.0f) return s_vec3(0.0f, 0.0f, 0.0f);
     return s_vec3((_vec)->x / len, (_vec)->y / len, (_vec)->z / len);
 }
 static inline s_vec3 s_vec3_reflect(const s_vec3* _vec, const s_vec3* _n) {
-    const SYPHAX_PRECISION dot = s_vec3_dot(_vec, _n);
+    const S_PRECISION dot = s_vec3_dot(_vec, _n);
     return s_vec3(_vec->x - 2.0f * dot * _n->x, _vec->y - 2.0f * dot * _n->y, _vec->z - 2.0f * dot * _n->z);
 }
 
@@ -110,12 +198,12 @@ static inline s_vec3 s_vec3_reflect(const s_vec3* _vec, const s_vec3* _n) {
 #define s_vec4_from_angle(_vec)         (s_vec4(cosf(_vec), sinf(_vec), 0.0f, 0.0f))
 #define s_vec4_to_angle(_vec)           (atan2f((_vec)->y, (_vec)->x))
 static inline s_vec4 s_vec4_normalize(const s_vec4* _vec) {
-    const SYPHAX_PRECISION len = s_vec4_length(_vec);
+    const S_PRECISION len = s_vec4_length(_vec);
     if (len == 0.0f) return s_vec4(0.0f, 0.0f, 0.0f, 0.0f);
     return s_vec4((_vec)->x / len, (_vec)->y / len, (_vec)->z / len, (_vec)->w / len);
 }
 static inline s_vec4 s_vec4_reflect(const s_vec4* _vec, const s_vec4* _n) {
-    const SYPHAX_PRECISION dot = s_vec4_dot(_vec, _n);
+    const S_PRECISION dot = s_vec4_dot(_vec, _n);
     return s_vec4(_vec->x - 2.0f * dot * _n->x, _vec->y - 2.0f * dot * _n->y, _vec->z - 2.0f * dot * _n->z, _vec->w - 2.0f * dot * _n->w);
 }
 
@@ -148,7 +236,7 @@ static inline s_mat3 s_mat3_mul(const s_mat3* _mat_a, const s_mat3* _mat_b) {
 ))
 static inline s_mat3 s_mat3_inverse(const s_mat3* _mat) {
     s_mat3 inv = *_mat;
-    SYPHAX_PRECISION aug[3][6];
+    S_PRECISION aug[3][6];
     for (u8 i = 0; i < 3; i++) {
         for (u8 j = 0; j < 3; j++) aug[i][j] = inv.m[i][j];
         for (u8 j = 0; j < 3; j++) aug[i][j + 3] = (i == j) ? 1.0f : 0.0f;
@@ -226,7 +314,7 @@ static inline s_mat4 s_mat4_mul(const s_mat4* _mat_a, const s_mat4* _mat_b) {
 ))
 static inline s_mat4 s_mat4_inverse(const s_mat4* _mat) {
     s_mat4 inv = *_mat;
-    SYPHAX_PRECISION aug[4][8];
+    S_PRECISION aug[4][8];
     for (u8 i = 0; i < 4; i++) {
         for (u8 j = 0; j < 4; j++) aug[i][j] = inv.m[j][i];
         for (u8 j = 0; j < 4; j++) aug[i][j + 4] = (i == j) ? 1.0f : 0.0f;
@@ -289,8 +377,8 @@ static inline s_mat4 s_mat4_look_at(const s_vec3* _from, const s_vec3* _to, cons
 		0.0f, 0.0f, 0.0f, 1.0f
     );
 }
-static inline s_mat4 s_mat4_perspective(const SYPHAX_PRECISION _fov, const SYPHAX_PRECISION _aspect, const SYPHAX_PRECISION _near, const SYPHAX_PRECISION _far) {
-    SYPHAX_PRECISION tanHalfFov = tanf(_fov / 2.0f);
+static inline s_mat4 s_mat4_perspective(const S_PRECISION _fov, const S_PRECISION _aspect, const S_PRECISION _near, const S_PRECISION _far) {
+    S_PRECISION tanHalfFov = tanf(_fov / 2.0f);
     return s_mat4(
         1.0f / (_aspect * tanHalfFov), 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f / tanHalfFov, 0.0f, 0.0f,
@@ -298,7 +386,7 @@ static inline s_mat4 s_mat4_perspective(const SYPHAX_PRECISION _fov, const SYPHA
         0.0f, 0.0f, -1.0f, 0.0f
     );
 }
-static inline s_mat4 s_mat4_ortho(const SYPHAX_PRECISION _left, const SYPHAX_PRECISION _right, const SYPHAX_PRECISION _bottom, const SYPHAX_PRECISION _top, const SYPHAX_PRECISION _near, const SYPHAX_PRECISION _far) {
+static inline s_mat4 s_mat4_ortho(const S_PRECISION _left, const S_PRECISION _right, const S_PRECISION _bottom, const S_PRECISION _top, const S_PRECISION _near, const S_PRECISION _far) {
     return s_mat4(
         2.0f / (_right - _left), 0.0f, 0.0f, -(_right + _left) / (_right - _left),
         0.0f, 2.0f / (_top - _bottom), 0.0f, -(_top + _bottom) / (_top - _bottom),
@@ -311,4 +399,3 @@ static inline s_mat4 s_mat4_ortho(const SYPHAX_PRECISION _left, const SYPHAX_PRE
 #define s_assertf(expr, ...) if (!(expr))   { fprintf(stderr, "[%s: %d] Assertion failed: %s\n", __FILE__, __LINE__, #expr); fprintf(stderr, __VA_ARGS__); assert(0); }
 
 #endif // S_TYPES_H
-
