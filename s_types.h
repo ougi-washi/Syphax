@@ -365,11 +365,31 @@ static inline s_mat4 s_mat4_inverse(const s_mat4* _mat) {
 #undef s_mat4_scale
 #define s_mat4_scale(_mat, _v)              (s_mat4_mul((_mat), &(s_mat4((_v)->x, 0.0f, 0.0f, 0.0f, 0.0f, (_v)->y, 0.0f, 0.0f, 0.0f, 0.0f, (_v)->z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
 static inline s_mat4 s_mat4_look_at(const s_vec3* _from, const s_vec3* _to, const s_vec3* _up) {
+    const S_PRECISION eps = 0.000001f;
     s_vec3 f = s_vec3_sub(_to, _from);
-    f = s_vec3_normalize(&f);
-    s_vec3 s = s_vec3_cross(&f, _up);
+    if (s_vec3_length(&f) <= eps) {
+        f = s_vec3(0.0f, 0.0f, -1.0f);
+    } else {
+        f = s_vec3_normalize(&f);
+    }
+
+    s_vec3 up = *_up;
+    if (s_vec3_length(&up) <= eps) {
+        up = s_vec3(0.0f, 1.0f, 0.0f);
+    } else {
+        up = s_vec3_normalize(&up);
+    }
+
+    s_vec3 s = s_vec3_cross(&f, &up);
+    if (s_vec3_length(&s) <= eps) {
+        const s_vec3 fallback_up = (fabsf(f.y) > 0.999f)
+            ? s_vec3(0.0f, 0.0f, 1.0f)
+            : s_vec3(0.0f, 1.0f, 0.0f);
+        s = s_vec3_cross(&f, &fallback_up);
+    }
     s = s_vec3_normalize(&s);
     s_vec3 u = s_vec3_cross(&s, &f);
+    u = s_vec3_normalize(&u);
     return s_mat4(
 		s.x, u.x, -f.x, -s_vec3_dot(&s, _from),
 		s.y, u.y, -f.y, -s_vec3_dot(&u, _from),
@@ -399,3 +419,4 @@ static inline s_mat4 s_mat4_ortho(const S_PRECISION _left, const S_PRECISION _ri
 #define s_assertf(expr, ...) if (!(expr))   { fprintf(stderr, "[%s: %d] Assertion failed: %s\n", __FILE__, __LINE__, #expr); fprintf(stderr, __VA_ARGS__); assert(0); }
 
 #endif // S_TYPES_H
+
