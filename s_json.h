@@ -15,6 +15,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <math.h>
 
 typedef enum {
     S_JSON_NULL = 0,
@@ -274,7 +275,24 @@ typedef struct {
     sz capacity;
     b8 grow;
     b8 failed;
+    i32 number_precision;
 } s_json_writer;
+
+static inline f64 s_json_round_to_precision(f64 _value, i32 _precision) {
+    if (!isfinite(_value) || _precision < 0) return _value;
+    if (_precision > 15) _precision = 15;
+    f64 scale = 1.0;
+    for (i32 i = 0; i < _precision; ++i) scale *= 10.0;
+    if (scale <= 0.0 || !isfinite(scale)) return _value;
+    f64 rounded = round(_value * scale) / scale;
+    if (fabs(rounded) < (0.5 / scale)) rounded = 0.0;
+    return rounded;
+}
+
+static inline b8 s_json_number_is_integer(f64 _value) {
+    f64 whole = 0.0;
+    return isfinite(_value) && modf(_value, &whole) == 0.0;
+}
 
 static inline b8 s_json_writer_reserve(s_json_writer* _wr, sz _need) {
     if (_wr->failed) return false;
@@ -333,6 +351,24 @@ static inline b8 s_json_writer_append_escaped(s_json_writer* _wr, const char* _s
     return s_json_writer_append_char(_wr, '"');
 }
 
+static inline b8 s_json_writer_append_number(s_json_writer* _wr, f64 _value) {
+    char buf[128];
+    int len = 0;
+    if (_wr->number_precision >= 0 && isfinite(_value)) {
+        const i32 precision = _wr->number_precision > 15 ? 15 : _wr->number_precision;
+        const f64 rounded = s_json_round_to_precision(_value, precision);
+        if (s_json_number_is_integer(rounded)) {
+            len = snprintf(buf, sizeof(buf), "%.0f", rounded);
+        } else {
+            len = snprintf(buf, sizeof(buf), "%.*f", precision, rounded);
+        }
+    } else {
+        len = snprintf(buf, sizeof(buf), "%.17g", _value);
+    }
+    if (len <= 0 || (sz)len >= sizeof(buf)) return false;
+    return s_json_writer_append(_wr, buf, (sz)len);
+}
+
 static inline b8 s_json_write_value(s_json_writer* _wr, const s_json* _node);
 
 static inline b8 s_json_write_array(s_json_writer* _wr, const s_json* _node) {
@@ -362,12 +398,7 @@ static inline b8 s_json_write_value(s_json_writer* _wr, const s_json* _node) {
     switch (_node->type) {
         case S_JSON_NULL: return s_json_writer_append(_wr, "null", 4);
         case S_JSON_BOOL: return s_json_writer_append(_wr, _node->as.boolean ? "true" : "false", _node->as.boolean ? 4 : 5);
-        case S_JSON_NUMBER: {
-            char buf[64];
-            const int len = snprintf(buf, sizeof(buf), "%.17g", _node->as.number);
-            if (len <= 0) return false;
-            return s_json_writer_append(_wr, buf, (sz)len);
-        }
+        case S_JSON_NUMBER: return s_json_writer_append_number(_wr, _node->as.number);
         case S_JSON_STRING: return s_json_writer_append_escaped(_wr, _node->as.string ? _node->as.string : "");
         case S_JSON_ARRAY: return s_json_write_array(_wr, _node);
         case S_JSON_OBJECT: return s_json_write_object(_wr, _node);
@@ -375,9 +406,10 @@ static inline b8 s_json_write_value(s_json_writer* _wr, const s_json* _node) {
     }
 }
 
-static inline char* s_json_stringify(const s_json* _node) {
+static inline char* s_json_stringify_precision(const s_json* _node, i32 _number_precision) {
     s_json_writer wr = {0};
     wr.grow = true;
+    wr.number_precision = _number_precision;
     if (!s_json_write_value(&wr, _node) || wr.failed) {
         free(wr.data);
         return NULL;
@@ -385,14 +417,23 @@ static inline char* s_json_stringify(const s_json* _node) {
     return wr.data;
 }
 
-static inline sz s_json_write(const s_json* _node, char* _buffer, sz _capacity) {
+static inline char* s_json_stringify(const s_json* _node) {
+    return s_json_stringify_precision(_node, -1);
+}
+
+static inline sz s_json_write_precision(const s_json* _node, char* _buffer, sz _capacity, i32 _number_precision) {
     s_json_writer wr = {0};
     wr.data = _buffer;
     wr.capacity = _capacity;
     wr.grow = false;
+    wr.number_precision = _number_precision;
     if (_buffer != NULL && _capacity > 0) _buffer[0] = '\0';
     if (!s_json_write_value(&wr, _node) || wr.failed) return 0;
     return wr.size;
+}
+
+static inline sz s_json_write(const s_json* _node, char* _buffer, sz _capacity) {
+    return s_json_write_precision(_node, _buffer, _capacity, -1);
 }
 
 typedef struct {
