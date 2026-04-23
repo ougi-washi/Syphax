@@ -533,6 +533,21 @@ static inline b8 s_json_append_utf8(char** buf, sz* size, sz* cap, u32 cp) {
     return true;
 }
 
+static inline b8 s_json_append_bytes(char** buf, sz* size, sz* cap, const char* src, sz len) {
+    if (*size + len + 1 > *cap) {
+        sz new_cap = *cap == 0 ? 16 : *cap;
+        while (new_cap < *size + len + 1) new_cap *= 2;
+        char* next = (char*)realloc(*buf, new_cap);
+        if (next == NULL) return false;
+        *buf = next;
+        *cap = new_cap;
+    }
+    memcpy(*buf + *size, src, len);
+    *size += len;
+    (*buf)[*size] = '\0';
+    return true;
+}
+
 static inline char* s_json_parse_string(s_json_parser* _p) {
     if (s_json_next(_p) != '"') return NULL;
     char* buf = NULL;
@@ -595,7 +610,8 @@ static inline char* s_json_parse_string(s_json_parser* _p) {
                     return NULL;
             }
         } else {
-            if (!s_json_append_utf8(&buf, &size, &cap, (unsigned char)c)) goto oom;
+            const unsigned char byte = (unsigned char)c;
+            if (!s_json_append_bytes(&buf, &size, &cap, (const char*)&byte, 1)) goto oom;
         }
     }
     s_json_set_error(_p, S_JSON_ERR_EOF);
