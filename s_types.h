@@ -391,9 +391,9 @@ static inline s_mat4 s_mat4_look_at(const s_vec3* _from, const s_vec3* _to, cons
     s_vec3 u = s_vec3_cross(&s, &f);
     u = s_vec3_normalize(&u);
     return s_mat4(
-		s.x, u.x, -f.x, -s_vec3_dot(&s, _from),
-		s.y, u.y, -f.y, -s_vec3_dot(&u, _from),
-		s.z, u.z, -f.z, s_vec3_dot(&f, _from),
+		s.x, s.y, s.z, -s_vec3_dot(&s, _from),
+		u.x, u.y, u.z, -s_vec3_dot(&u, _from),
+		-f.x, -f.y, -f.z, s_vec3_dot(&f, _from),
 		0.0f, 0.0f, 0.0f, 1.0f
     );
 }
