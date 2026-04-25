@@ -6,6 +6,7 @@ Features:
 - Static arrays
 - Files and paths
 - JSON parser/writer
+- JSON typed getters, object/array helpers, and simple paths
 - Threads, mutexes, conditions
 - Memory arena with debug tracking
 

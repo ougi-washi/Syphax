@@ -15,6 +15,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdint.h>
 
 typedef enum {
     S_JSON_NULL = 0,
@@ -251,6 +252,207 @@ static inline s_json* s_json_at(const s_json* _arr, sz _index) {
     if (_arr == NULL || _arr->type != S_JSON_ARRAY) return NULL;
     if (_index >= _arr->as.children.count) return NULL;
     return _arr->as.children.items[_index];
+}
+
+static inline sz s_json_count(const s_json* _node) {
+    if (_node == NULL || !(_node->type == S_JSON_ARRAY || _node->type == S_JSON_OBJECT)) return 0;
+    return _node->as.children.count;
+}
+
+static inline b8 s_json_is_null(const s_json* _node) {
+    return _node != NULL && _node->type == S_JSON_NULL;
+}
+
+static inline b8 s_json_is_bool(const s_json* _node) {
+    return _node != NULL && _node->type == S_JSON_BOOL;
+}
+
+static inline b8 s_json_is_number(const s_json* _node) {
+    return _node != NULL && _node->type == S_JSON_NUMBER;
+}
+
+static inline b8 s_json_is_string(const s_json* _node) {
+    return _node != NULL && _node->type == S_JSON_STRING;
+}
+
+static inline b8 s_json_is_array(const s_json* _node) {
+    return _node != NULL && _node->type == S_JSON_ARRAY;
+}
+
+static inline b8 s_json_is_object(const s_json* _node) {
+    return _node != NULL && _node->type == S_JSON_OBJECT;
+}
+
+static inline const char* s_json_as_str(const s_json* _node) {
+    if (!s_json_is_string(_node)) return NULL;
+    return _node->as.string != NULL ? _node->as.string : "";
+}
+
+static inline b8 s_json_as_bool(const s_json* _node, b8* _out) {
+    if (!s_json_is_bool(_node) || _out == NULL) return false;
+    *_out = _node->as.boolean;
+    return true;
+}
+
+static inline b8 s_json_as_num(const s_json* _node, f64* _out) {
+    if (!s_json_is_number(_node) || _out == NULL) return false;
+    *_out = _node->as.number;
+    return true;
+}
+
+static inline b8 s_json_as_i64(const s_json* _node, i64* _out) {
+    f64 number;
+    if (!s_json_as_num(_node, &number) || _out == NULL) return false;
+    if (!isfinite(number) || number < (f64)INT64_MIN || number > (f64)INT64_MAX) return false;
+    *_out = (i64)number;
+    return true;
+}
+
+static inline b8 s_json_object_add(s_json* _obj, const char* _key, s_json* _child) {
+    char* key_copy;
+    if (_obj == NULL || _obj->type != S_JSON_OBJECT || _key == NULL || _child == NULL) return false;
+    key_copy = s_json_strdup(_key);
+    if (key_copy == NULL) return false;
+    s_json_set_name_take(_child, key_copy);
+    return s_json_add(_obj, _child);
+}
+
+static inline b8 s_json_array_add(s_json* _arr, s_json* _child) {
+    if (_arr == NULL || _arr->type != S_JSON_ARRAY || _child == NULL) return false;
+    return s_json_add(_arr, _child);
+}
+
+static inline void s_json_free(s_json* _node);
+
+static inline b8 s_json_object_add_node(s_json* _obj, const char* _key, s_json* _child) {
+    if (!s_json_object_add(_obj, _key, _child)) {
+        s_json_free(_child);
+        return false;
+    }
+    return true;
+}
+
+static inline b8 s_json_array_add_node(s_json* _arr, s_json* _child) {
+    if (!s_json_array_add(_arr, _child)) {
+        s_json_free(_child);
+        return false;
+    }
+    return true;
+}
+
+static inline b8 s_json_object_add_null(s_json* _obj, const char* _key) {
+    return s_json_object_add_node(_obj, _key, s_json_null(NULL));
+}
+
+static inline b8 s_json_object_add_bool(s_json* _obj, const char* _key, b8 _value) {
+    return s_json_object_add_node(_obj, _key, s_json_bool(NULL, _value));
+}
+
+static inline b8 s_json_object_add_int(s_json* _obj, const char* _key, i64 _value) {
+    return s_json_object_add_node(_obj, _key, s_json_int(NULL, _value));
+}
+
+static inline b8 s_json_object_add_num(s_json* _obj, const char* _key, f64 _value) {
+    return s_json_object_add_node(_obj, _key, s_json_num(NULL, _value));
+}
+
+static inline b8 s_json_object_add_str(s_json* _obj, const char* _key, const char* _value) {
+    return s_json_object_add_node(_obj, _key, s_json_str(NULL, _value));
+}
+
+static inline b8 s_json_array_add_null(s_json* _arr) {
+    return s_json_array_add_node(_arr, s_json_null(NULL));
+}
+
+static inline b8 s_json_array_add_bool(s_json* _arr, b8 _value) {
+    return s_json_array_add_node(_arr, s_json_bool(NULL, _value));
+}
+
+static inline b8 s_json_array_add_int(s_json* _arr, i64 _value) {
+    return s_json_array_add_node(_arr, s_json_int(NULL, _value));
+}
+
+static inline b8 s_json_array_add_num(s_json* _arr, f64 _value) {
+    return s_json_array_add_node(_arr, s_json_num(NULL, _value));
+}
+
+static inline b8 s_json_array_add_str(s_json* _arr, const char* _value) {
+    return s_json_array_add_node(_arr, s_json_str(NULL, _value));
+}
+
+static inline s_json* s_json_get_range(const s_json* _obj, const char* _key, sz _key_len) {
+    if (_obj == NULL || _obj->type != S_JSON_OBJECT || _key == NULL || _key_len == 0) return NULL;
+    for (sz i = 0; i < _obj->as.children.count; i++) {
+        s_json* child = _obj->as.children.items[i];
+        if (child != NULL && child->name != NULL && strlen(child->name) == _key_len && strncmp(child->name, _key, _key_len) == 0) return child;
+    }
+    return NULL;
+}
+
+static inline s_json* s_json_get_path(const s_json* _root, const char* _path) {
+    const char* cursor;
+    const s_json* node = _root;
+
+    if (_root == NULL || _path == NULL || _path[0] == '\0') return NULL;
+    cursor = _path;
+    if (*cursor == '$') {
+        ++cursor;
+        if (*cursor == '\0') return (s_json*)node;
+    }
+
+    while (*cursor != '\0') {
+        if (*cursor == '.') {
+            const char* key_begin;
+            ++cursor;
+            key_begin = cursor;
+            while (*cursor != '\0' && *cursor != '.' && *cursor != '[') ++cursor;
+            if (cursor == key_begin) return NULL;
+            node = s_json_get_range(node, key_begin, (sz)(cursor - key_begin));
+            if (node == NULL) return NULL;
+            continue;
+        }
+        if (*cursor == '[') {
+            sz index = 0;
+            ++cursor;
+            if (*cursor < '0' || *cursor > '9') return NULL;
+            while (*cursor >= '0' && *cursor <= '9') {
+                const sz digit = (sz)(*cursor - '0');
+                if (index > (SIZE_MAX - digit) / 10) return NULL;
+                index = (index * 10) + digit;
+                ++cursor;
+            }
+            if (*cursor != ']') return NULL;
+            ++cursor;
+            node = s_json_at(node, index);
+            if (node == NULL) return NULL;
+            continue;
+        }
+        {
+            const char* key_begin = cursor;
+            while (*cursor != '\0' && *cursor != '.' && *cursor != '[') ++cursor;
+            if (cursor == key_begin) return NULL;
+            node = s_json_get_range(node, key_begin, (sz)(cursor - key_begin));
+            if (node == NULL) return NULL;
+        }
+    }
+
+    return (s_json*)node;
+}
+
+static inline const char* s_json_get_path_str(const s_json* _root, const char* _path) {
+    return s_json_as_str(s_json_get_path(_root, _path));
+}
+
+static inline b8 s_json_get_path_bool(const s_json* _root, const char* _path, b8* _out) {
+    return s_json_as_bool(s_json_get_path(_root, _path), _out);
+}
+
+static inline b8 s_json_get_path_num(const s_json* _root, const char* _path, f64* _out) {
+    return s_json_as_num(s_json_get_path(_root, _path), _out);
+}
+
+static inline b8 s_json_get_path_i64(const s_json* _root, const char* _path, i64* _out) {
+    return s_json_as_i64(s_json_get_path(_root, _path), _out);
 }
 
 static inline void s_json_free(s_json* _node) {
