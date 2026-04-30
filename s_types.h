@@ -39,6 +39,9 @@ typedef size_t sz;
 typedef struct { S_PRECISION x, y; } s_vec2;
 typedef struct { S_PRECISION x, y, z; } s_vec3;
 typedef struct { S_PRECISION x, y, z, w; } s_vec4;
+typedef struct { i32 x, y; } s_ivec2;
+typedef struct { i32 x, y, z; } s_ivec3;
+typedef struct { i32 x, y, z, w; } s_ivec4;
 typedef struct { S_PRECISION m[3][3]; } s_mat3;
 typedef struct { S_PRECISION m[4][4]; } s_mat4;
 
@@ -206,6 +209,27 @@ static inline s_vec4 s_vec4_reflect(const s_vec4* _vec, const s_vec4* _n) {
     const S_PRECISION dot = s_vec4_dot(_vec, _n);
     return s_vec4(_vec->x - 2.0f * dot * _n->x, _vec->y - 2.0f * dot * _n->y, _vec->z - 2.0f * dot * _n->z, _vec->w - 2.0f * dot * _n->w);
 }
+
+// s_ivec2
+#define s_ivec2(_x, _y)                  ((s_ivec2){ (_x), (_y) })
+#define s_ivec2_add(_vec_a, _vec_b)      (s_ivec2((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y))
+#define s_ivec2_sub(_vec_a, _vec_b)      (s_ivec2((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y))
+#define s_ivec2_mul(_vec_a, _vec_b)      (s_ivec2((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y))
+#define s_ivec2_div(_vec_a, _vec_b)      (s_ivec2((_vec_a)->x / (_vec_b)->x, (_vec_a)->y / (_vec_b)->y))
+
+// s_ivec3
+#define s_ivec3(_x, _y, _z)              ((s_ivec3){ (_x), (_y), (_z) })
+#define s_ivec3_add(_vec_a, _vec_b)      (s_ivec3((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y, (_vec_a)->z + (_vec_b)->z))
+#define s_ivec3_sub(_vec_a, _vec_b)      (s_ivec3((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y, (_vec_a)->z - (_vec_b)->z))
+#define s_ivec3_mul(_vec_a, _vec_b)      (s_ivec3((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y, (_vec_a)->z * (_vec_b)->z))
+#define s_ivec3_div(_vec_a, _vec_b)      (s_ivec3((_vec_a)->x / (_vec_b)->x, (_vec_a)->y / (_vec_b)->y, (_vec_a)->z / (_vec_b)->z))
+
+// s_ivec4
+#define s_ivec4(_x, _y, _z, _w)          ((s_ivec4){ (_x), (_y), (_z), (_w) })
+#define s_ivec4_add(_vec_a, _vec_b)      (s_ivec4((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y, (_vec_a)->z + (_vec_b)->z, (_vec_a)->w + (_vec_b)->w))
+#define s_ivec4_sub(_vec_a, _vec_b)      (s_ivec4((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y, (_vec_a)->z - (_vec_b)->z, (_vec_a)->w - (_vec_b)->w))
+#define s_ivec4_mul(_vec_a, _vec_b)      (s_ivec4((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y, (_vec_a)->z * (_vec_b)->z, (_vec_a)->w * (_vec_b)->w))
+#define s_ivec4_div(_vec_a, _vec_b)      (s_ivec4((_vec_a)->x / (_vec_b)->x, (_vec_a)->y / (_vec_b)->y, (_vec_a)->z / (_vec_b)->z, (_vec_a)->w / (_vec_b)->w))
 
 // s_mat3
 #define s_mat3(_m00, _m01, _m02, _m10, _m11, _m12, _m20, _m21, _m22) \
@@ -419,4 +443,3 @@ static inline s_mat4 s_mat4_ortho(const S_PRECISION _left, const S_PRECISION _ri
 #define s_assertf(expr, ...) if (!(expr))   { fprintf(stderr, "[%s: %d] Assertion failed: %s\n", __FILE__, __LINE__, #expr); fprintf(stderr, __VA_ARGS__); assert(0); }
 
 #endif // S_TYPES_H
-
