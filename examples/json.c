@@ -1,6 +1,6 @@
+#define SYPHAX_STATIC
 #include "s_json.h"
 #include <stdio.h>
-#include <stdlib.h>
 
 int main(void) {
     s_json* doc = s_json_object("root",
@@ -26,7 +26,7 @@ int main(void) {
     s_json* parsed = s_json_parse_with_error(text, &err);
     if (parsed == NULL) {
         fprintf(stderr, "parse failed at %zu:%zu\n", err.line, err.column);
-        free(text);
+        s_free(text);
         s_json_free(doc);
         return 1;
     }
@@ -38,6 +38,6 @@ int main(void) {
 
     s_json_free(parsed);
     s_json_free(doc);
-    free(text);
+    s_free(text);
     return 0;
 }

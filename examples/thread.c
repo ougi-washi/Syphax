@@ -1,3 +1,4 @@
+#define SYPHAX_STATIC
 #include "s_thread.h"
 #include <stdio.h>
 

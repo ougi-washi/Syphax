@@ -5,44 +5,135 @@ on:
   pull_request:
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
+  linux:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up MSVC
-        if: matrix.os == 'windows-latest'
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Build and run examples (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Build and run
         shell: bash
         run: |
-          cc -std=c11 -Wall -Wextra -pedantic -I. examples/types.c -o examples/types -lm
-          cc -std=c11 -Wall -Wextra -pedantic -I. examples/array.c -o examples/array
-          cc -std=c11 -Wall -Wextra -pedantic -I. examples/files.c -o examples/files
-          cc -std=c11 -Wall -Wextra -pedantic -I. examples/json.c -o examples/json
-          cc -std=c11 -Wall -Wextra -pedantic -I. examples/thread.c -o examples/thread -pthread
-          ./examples/types
-          ./examples/array
-          ./examples/files
-          ./examples/json
-          ./examples/thread
+          set -eu
 
-      - name: Build and run examples (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: cmd
+          build_all() {
+            out="$1"
+            flags="$2"
+            mkdir -p "$out"
+            cc $flags examples/types.c -o "$out/types" -lm
+            cc $flags examples/array.c -o "$out/array"
+            cc $flags examples/files.c -o "$out/files"
+            cc $flags examples/json.c -o "$out/json" -lm
+            cc $flags examples/memory.c -o "$out/memory"
+            cc $flags examples/thread.c -o "$out/thread" -pthread
+            cc $flags tests/s_array_test.c -o "$out/s_array_test"
+            cc $flags tests/s_files_test.c -o "$out/s_files_test"
+            cc $flags tests/s_json_test.c -o "$out/s_json_test" -lm
+            cc $flags tests/s_math_test.c -o "$out/s_math_test" -lm
+            cc $flags tests/s_memory_test.c -o "$out/s_memory_test"
+            cc $flags tests/s_thread_test.c -o "$out/s_thread_test" -pthread
+            cc $flags tests/s_types_test.c -o "$out/s_types_test" -lm
+            cc $flags tests/s_integration_test.c -o "$out/s_integration_test" -pthread -lm
+            cc $flags tests/s_integration_impl.c tests/s_integration_use.c -o "$out/s_integration_impl_test" -pthread -lm
+            cc $flags tests/s_integration_static_main.c tests/s_integration_static_a.c tests/s_integration_static_b.c -o "$out/s_integration_static_test" -pthread -lm
+          }
+
+          run_all() {
+            out="$1"
+            for bin in types array files json memory thread \
+                s_array_test s_files_test s_json_test s_math_test s_memory_test \
+                s_thread_test s_types_test s_integration_test \
+                s_integration_impl_test s_integration_static_test; do
+              "$out/$bin"
+            done
+          }
+
+          common="-Wall -Wextra -pedantic -O2 -I."
+          build_all build "-std=c99 $common"
+          build_all build-c11 "-std=c11 $common"
+          build_all build-ndebug "-std=c99 $common -DNDEBUG"
+          cc -std=c99 $common -Wconversion -DS_PRECISION=f64 tests/s_math_test.c -o build/s_math_test_f64 -lm
+          run_all build
+          run_all build-c11
+          run_all build-ndebug
+          build/s_math_test_f64
+
+      - name: Standalone header checks
+        shell: bash
         run: |
-          cl /nologo /W3 /TC /I. examples\types.c /Fe:examples\types.exe
-          cl /nologo /W3 /TC /I. examples\array.c /Fe:examples\array.exe
-          cl /nologo /W3 /TC /I. examples\files.c /Fe:examples\files.exe
-          cl /nologo /W3 /TC /I. examples\json.c /Fe:examples\json.exe
-          cl /nologo /W3 /TC /I. examples\thread.c /Fe:examples\thread.exe
-          examples\types.exe
-          examples\array.exe
-          examples\files.exe
-          examples\json.exe
-          examples\thread.exe
+          set -eu
+          mkdir -p build/headers
+          for header in s_types.h s_array.h s_math.h s_files.h s_json.h s_memory.h s_thread.h; do
+            extra=""
+            [ "$header" = "s_thread.h" ] && extra="-pthread"
+            cc -std=c99 -Wall -Wextra -pedantic -I. -include "$header" -x c /dev/null -c -o "build/headers/${header%.h}.o" $extra
+          done
+
+  linux-sanitizer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and run sanitizer tests
+        shell: bash
+        run: |
+          set -eu
+          flags="-std=c99 -Wall -Wextra -pedantic -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -I."
+          mkdir -p build-sanitize
+          cc $flags examples/types.c -o build-sanitize/types -lm
+          cc $flags examples/array.c -o build-sanitize/array
+          cc $flags examples/files.c -o build-sanitize/files
+          cc $flags examples/json.c -o build-sanitize/json -lm
+          cc $flags examples/memory.c -o build-sanitize/memory
+          cc $flags examples/thread.c -o build-sanitize/thread -pthread
+          cc $flags tests/s_array_test.c -o build-sanitize/s_array_test
+          cc $flags tests/s_files_test.c -o build-sanitize/s_files_test
+          cc $flags tests/s_json_test.c -o build-sanitize/s_json_test -lm
+          cc $flags tests/s_math_test.c -o build-sanitize/s_math_test -lm
+          cc $flags tests/s_memory_test.c -o build-sanitize/s_memory_test
+          cc $flags tests/s_thread_test.c -o build-sanitize/s_thread_test -pthread
+          cc $flags tests/s_types_test.c -o build-sanitize/s_types_test -lm
+          cc $flags tests/s_integration_test.c -o build-sanitize/s_integration_test -pthread -lm
+          cc $flags tests/s_integration_impl.c tests/s_integration_use.c -o build-sanitize/s_integration_impl_test -pthread -lm
+          cc $flags tests/s_integration_static_main.c tests/s_integration_static_a.c tests/s_integration_static_b.c -o build-sanitize/s_integration_static_test -pthread -lm
+          for bin in build-sanitize/*; do
+            ASAN_OPTIONS=detect_leaks=0 "$bin"
+          done
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build examples and tests
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          $flags = @("-std=c99", "-Wall", "-Wextra", "-O2", "-I.")
+          function Build($sources, $out) {
+            clang @flags @sources -o "build\$out.exe"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          Build @("examples\types.c") "types"
+          Build @("examples\array.c") "array"
+          Build @("examples\files.c") "files"
+          Build @("examples\json.c") "json"
+          Build @("examples\memory.c") "memory"
+          Build @("examples\thread.c") "thread"
+          Build @("tests\s_array_test.c") "s_array_test"
+          Build @("tests\s_files_test.c") "s_files_test"
+          Build @("tests\s_json_test.c") "s_json_test"
+          Build @("tests\s_math_test.c") "s_math_test"
+          Build @("tests\s_memory_test.c") "s_memory_test"
+          Build @("tests\s_thread_test.c") "s_thread_test"
+          Build @("tests\s_types_test.c") "s_types_test"
+          Build @("tests\s_integration_test.c") "s_integration_test"
+          Build @("tests\s_integration_impl.c", "tests\s_integration_use.c") "s_integration_impl_test"
+          Build @("tests\s_integration_static_main.c", "tests\s_integration_static_a.c", "tests\s_integration_static_b.c") "s_integration_static_test"
+
+      - name: Run examples and tests
+        shell: pwsh
+        run: |
+          foreach ($bin in Get-ChildItem build\*.exe) {
+            & $bin.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }

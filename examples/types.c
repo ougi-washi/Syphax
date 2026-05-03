@@ -1,4 +1,4 @@
-#include "s_types.h"
+#include "s_math.h"
 #include <stdio.h>
 
 int main(void) {

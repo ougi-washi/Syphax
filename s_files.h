@@ -16,6 +16,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <limits.h>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -39,7 +40,12 @@
     #define S_PATH_SEPARATOR '/'
     #define S_PATH_SEPARATOR_STR "/"
     typedef struct stat s_stat_t;
+    int lstat(const char* path, struct stat* buf);
     #define s_stat stat
+    #define s_lstat lstat
+    #ifndef S_ISLNK
+        #define S_ISLNK(m) (((m) & S_IFMT) == S_IFLNK)
+    #endif
 #endif
 
 typedef enum {
@@ -56,50 +62,125 @@ typedef struct {
     s_file_error code;
 } s_file_result;
 
-static inline b8 s_path_is_sep(char _c) {
+#if !defined(SYPHAX_STATIC)
+b8 s_path_is_sep(char _c);
+b8 s_path_exists(const char* _path);
+b8 s_path_is_file(const char* _path);
+b8 s_path_is_dir(const char* _path);
+b8 s_file_exists(const char* _path);
+b8 s_directory_exists(const char* _path);
+const char* s_path_filename(const char* _path);
+const char* s_path_extension(const char* _path);
+b8 s_path_parent(const char* _path, char* _out_buf, sz _out_cap);
+b8 s_path_join(char* _out_buf, sz _out_cap, const char* _a, const char* _b);
+b8 s_directory_create(const char* _path);
+b8 s_directory_remove(const char* _path);
+b8 s_directory_remove_recursive(const char* _path);
+b8 s_file_read(const char* _path, char** _out_data, sz* _out_size);
+b8 s_file_read_binary(const char* _path, u8** _out_data, sz* _out_size);
+b8 s_file_write(const char* _path, const char* _data, sz _size);
+b8 s_file_write_binary(const char* _path, const void* _data, sz _size);
+b8 s_file_append(const char* _path, const char* _data, sz _size);
+b8 s_file_remove(const char* _path);
+b8 s_file_copy(const char* _src, const char* _dst, b8 _overwrite);
+b8 s_file_move(const char* _src, const char* _dst, b8 _overwrite);
+b8 s_file_size(const char* _path, sz* _out_size);
+b8 s_file_mtime(const char* _path, time_t* _out_mtime);
+#endif
+
+#if defined(SYPHAX_STATIC) || defined(SYPHAX_IMPLEMENTATION)
+#if defined(SYPHAX_STATIC)
+#define S_FILES_DEF static inline
+#define S_FILES_PRIV static inline
+#else
+#define S_FILES_DEF
+#define S_FILES_PRIV static
+#endif
+
+S_FILES_DEF b8 s_path_is_sep(char _c) {
     return _c == '/' || _c == '\\';
 }
 
-static inline char* s_files_strdup(const char* _str) {
+S_FILES_PRIV char* s_files_strdup(const char* _str) {
     if (_str == NULL) return NULL;
     const sz len = strlen(_str);
-    char* out = (char*)malloc(len + 1);
+    char* out = (char*)s_malloc(len + 1);
     if (out == NULL) return NULL;
-    memcpy(out, _str, len);
-    out[len] = '\0';
+    memcpy(out, _str, len + 1);
     return out;
 }
 
+S_FILES_PRIV b8 s_path_is_dangerous_remove_root(const char* _path) {
+    if (_path == NULL || _path[0] == '\0') return true;
+    sz len = strlen(_path);
+    while (len > 1 && s_path_is_sep(_path[len - 1])) len--;
+    if ((len == 1 && _path[0] == '.') ||
+        (len == 2 && _path[0] == '.' && _path[1] == '.')) {
+        return true;
+    }
+    for (sz i = 0; i < len; ) {
+        while (i < len && s_path_is_sep(_path[i])) i++;
+        const sz start = i;
+        while (i < len && !s_path_is_sep(_path[i])) i++;
+        if (i - start == 2 && _path[start] == '.' && _path[start + 1] == '.') return true;
+    }
+#ifdef _WIN32
+    if (len == 1 && s_path_is_sep(_path[0])) return true;
+    if (len >= 2 && s_path_is_sep(_path[0]) && s_path_is_sep(_path[1])) {
+        sz components = 0;
+        b8 in_component = false;
+        for (sz i = 2; i < len; ++i) {
+            if (s_path_is_sep(_path[i])) {
+                if (in_component) components++;
+                in_component = false;
+            } else {
+                in_component = true;
+            }
+        }
+        if (in_component) components++;
+        if (components <= 2) return true;
+    }
+    if (len >= 2 &&
+        ((_path[0] >= 'A' && _path[0] <= 'Z') || (_path[0] >= 'a' && _path[0] <= 'z')) &&
+        _path[1] == ':') {
+        if (len == 2) return true;
+    }
+#else
+    if (len == 1 && s_path_is_sep(_path[0])) return true;
+#endif
+    return false;
+}
+
 // Path
-static inline b8 s_path_exists(const char* _path) {
+S_FILES_DEF b8 s_path_exists(const char* _path) {
     if (_path == NULL || _path[0] == '\0') return false;
     s_stat_t st;
     return s_stat(_path, &st) == 0;
 }
 
-static inline b8 s_path_is_file(const char* _path) {
+S_FILES_DEF b8 s_path_is_file(const char* _path) {
     if (_path == NULL || _path[0] == '\0') return false;
     s_stat_t st;
     if (s_stat(_path, &st) != 0) return false;
     return S_ISREG(st.st_mode) != 0;
 }
 
-static inline b8 s_path_is_dir(const char* _path) {
+S_FILES_DEF b8 s_path_is_dir(const char* _path) {
     if (_path == NULL || _path[0] == '\0') return false;
     s_stat_t st;
     if (s_stat(_path, &st) != 0) return false;
     return S_ISDIR(st.st_mode) != 0;
 }
 
-static inline b8 s_file_exists(const char* _path) {
+S_FILES_DEF b8 s_file_exists(const char* _path) {
     return s_path_is_file(_path);
 }
 
-static inline b8 s_directory_exists(const char* _path) {
+S_FILES_DEF b8 s_directory_exists(const char* _path) {
     return s_path_is_dir(_path);
 }
 
-static inline const char* s_path_filename(const char* _path) {
+S_FILES_DEF const char* s_path_filename(const char* _path) {
     if (_path == NULL || _path[0] == '\0') return _path;
     sz len = strlen(_path);
     while (len > 0 && s_path_is_sep(_path[len - 1])) {
@@ -116,7 +197,7 @@ static inline const char* s_path_filename(const char* _path) {
     return _path + i;
 }
 
-static inline const char* s_path_extension(const char* _path) {
+S_FILES_DEF const char* s_path_extension(const char* _path) {
     const char* name = s_path_filename(_path);
     if (name == NULL) return NULL;
     const char* dot = strrchr(name, '.');
@@ -124,7 +205,7 @@ static inline const char* s_path_extension(const char* _path) {
     return dot;
 }
 
-static inline b8 s_path_parent(const char* _path, char* _out_buf, sz _out_cap) {
+S_FILES_DEF b8 s_path_parent(const char* _path, char* _out_buf, sz _out_cap) {
     if (_path == NULL || _out_buf == NULL || _out_cap == 0) return false;
     sz len = strlen(_path);
     if (len == 0) return false;
@@ -160,7 +241,7 @@ static inline b8 s_path_parent(const char* _path, char* _out_buf, sz _out_cap) {
     return true;
 }
 
-static inline b8 s_path_join(char* _out_buf, sz _out_cap, const char* _a, const char* _b) {
+S_FILES_DEF b8 s_path_join(char* _out_buf, sz _out_cap, const char* _a, const char* _b) {
     if (_out_buf == NULL || _out_cap == 0) return false;
     if (_a == NULL || _a[0] == '\0') {
         if (_b == NULL) return false;
@@ -181,9 +262,17 @@ static inline b8 s_path_join(char* _out_buf, sz _out_cap, const char* _a, const 
     const sz blen = strlen(_b);
     const b8 a_sep = s_path_is_sep(_a[alen - 1]);
     const b8 b_sep = s_path_is_sep(_b[0]);
-    sz total = alen + blen + 1;
-    if (a_sep && b_sep) total -= 1;
-    if (!a_sep && !b_sep) total += 1;
+    if (alen > SIZE_MAX - blen) return false;
+    sz total = alen + blen;
+    if (a_sep && b_sep) {
+        if (total > SIZE_MAX - 1) return false;
+    } else if (!a_sep && !b_sep) {
+        if (total > SIZE_MAX - 2) return false;
+        total += 2;
+    } else {
+        if (total > SIZE_MAX - 1) return false;
+        total += 1;
+    }
     if (total > _out_cap) return false;
     memcpy(_out_buf, _a, alen);
     sz pos = alen;
@@ -203,7 +292,7 @@ static inline b8 s_path_join(char* _out_buf, sz _out_cap, const char* _a, const 
     return true;
 }
 
-static inline b8 s_directory_create_one(const char* _path) {
+S_FILES_PRIV b8 s_directory_create_one(const char* _path) {
     if (_path == NULL || _path[0] == '\0') return false;
     if (s_directory_exists(_path)) return true;
 #ifdef _WIN32
@@ -218,7 +307,7 @@ static inline b8 s_directory_create_one(const char* _path) {
 }
 
 // Directory
-static inline b8 s_directory_create(const char* _path) {
+S_FILES_DEF b8 s_directory_create(const char* _path) {
     if (_path == NULL || _path[0] == '\0') return false;
     if (s_directory_exists(_path)) return true;
     char* tmp = s_files_strdup(_path);
@@ -244,21 +333,21 @@ static inline b8 s_directory_create(const char* _path) {
         if (s_path_is_sep(*p)) {
             *p = '\0';
             if (!s_directory_create_one(tmp)) {
-                free(tmp);
+                s_free(tmp);
                 return false;
             }
             *p = S_PATH_SEPARATOR;
         }
     }
     if (!s_directory_create_one(tmp)) {
-        free(tmp);
+        s_free(tmp);
         return false;
     }
-    free(tmp);
+    s_free(tmp);
     return true;
 }
 
-static inline b8 s_directory_remove(const char* _path) {
+S_FILES_DEF b8 s_directory_remove(const char* _path) {
     if (_path == NULL || _path[0] == '\0') return false;
 #ifdef _WIN32
     return _rmdir(_path) == 0;
@@ -267,10 +356,13 @@ static inline b8 s_directory_remove(const char* _path) {
 #endif
 }
 
-static inline b8 s_directory_remove_recursive(const char* _path) {
-    if (_path == NULL || _path[0] == '\0') return false;
-    if (!s_directory_exists(_path)) return false;
+S_FILES_DEF b8 s_directory_remove_recursive(const char* _path) {
+    if (s_path_is_dangerous_remove_root(_path)) return false;
 #ifdef _WIN32
+    DWORD root_attrs = GetFileAttributesA(_path);
+    if (root_attrs == INVALID_FILE_ATTRIBUTES) return false;
+    if ((root_attrs & FILE_ATTRIBUTE_DIRECTORY) == 0) return false;
+    if ((root_attrs & FILE_ATTRIBUTE_REPARSE_POINT) != 0) return false;
     char pattern[MAX_PATH];
     if (!s_path_join(pattern, sizeof(pattern), _path, "*")) return false;
     WIN32_FIND_DATAA data;
@@ -282,7 +374,12 @@ static inline b8 s_directory_remove_recursive(const char* _path) {
         char full[MAX_PATH];
         if (!s_path_join(full, sizeof(full), _path, name)) { FindClose(h); return false; }
         if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            if (!s_directory_remove_recursive(full)) { FindClose(h); return false; }
+            if (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+                if (!RemoveDirectoryA(full)) { FindClose(h); return false; }
+            } else if (!s_directory_remove_recursive(full)) {
+                FindClose(h);
+                return false;
+            }
         } else {
             if (!DeleteFileA(full)) { FindClose(h); return false; }
         }
@@ -290,6 +387,9 @@ static inline b8 s_directory_remove_recursive(const char* _path) {
     FindClose(h);
     return RemoveDirectoryA(_path) != 0;
 #else
+    s_stat_t root_st;
+    if (s_lstat(_path, &root_st) != 0) return false;
+    if (S_ISLNK(root_st.st_mode) || !S_ISDIR(root_st.st_mode)) return false;
     DIR* dir = opendir(_path);
     if (dir == NULL) return false;
     struct dirent* ent;
@@ -297,102 +397,101 @@ static inline b8 s_directory_remove_recursive(const char* _path) {
         if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) continue;
         sz base_len = strlen(_path);
         sz name_len = strlen(ent->d_name);
-        sz full_len = base_len + name_len + 2;
-        char* full = (char*)malloc(full_len);
-        if (full == NULL) { closedir(dir); return false; }
-        if (!s_path_join(full, full_len, _path, ent->d_name)) {
-            free(full);
+        if (base_len > SIZE_MAX - name_len || base_len + name_len > SIZE_MAX - 2) {
             closedir(dir);
             return false;
         }
-        if (s_directory_exists(full)) {
-            if (!s_directory_remove_recursive(full)) { free(full); closedir(dir); return false; }
-        } else {
-            if (remove(full) != 0) { free(full); closedir(dir); return false; }
+        sz full_len = base_len + name_len + 2;
+        char* full = (char*)s_malloc(full_len);
+        if (full == NULL) { closedir(dir); return false; }
+        if (!s_path_join(full, full_len, _path, ent->d_name)) {
+            s_free(full);
+            closedir(dir);
+            return false;
         }
-        free(full);
+        s_stat_t st;
+        if (s_lstat(full, &st) != 0) {
+            s_free(full);
+            closedir(dir);
+            return false;
+        }
+        if (S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode)) {
+            if (!s_directory_remove_recursive(full)) { s_free(full); closedir(dir); return false; }
+        } else {
+            if (remove(full) != 0) { s_free(full); closedir(dir); return false; }
+        }
+        s_free(full);
     }
-    closedir(dir);
+    if (closedir(dir) != 0) return false;
     return rmdir(_path) == 0;
 #endif
 }
 
 // File
-static inline b8 s_file_read(const char* _path, char** _out_data, sz* _out_size) {
+S_FILES_PRIV b8 s_file_read_alloc(const char* _path, void** _out_data, sz* _out_size, b8 _nul_terminate) {
     if (_path == NULL || _path[0] == '\0' || _out_data == NULL) return false;
     FILE* f = fopen(_path, "rb");
     if (f == NULL) return false;
-    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return false; }
-    long size = ftell(f);
-    if (size < 0) { fclose(f); return false; }
-    if (fseek(f, 0, SEEK_SET) != 0) { fclose(f); return false; }
-    char* data = (char*)malloc((sz)size + 1);
-    if (data == NULL) { fclose(f); return false; }
+    s_stat_t st;
+    const uintmax_t max_size = _nul_terminate ? (uintmax_t)(SIZE_MAX - 1) : (uintmax_t)SIZE_MAX;
+    if (s_stat(_path, &st) != 0 || st.st_size < 0 || (uintmax_t)st.st_size > max_size) { fclose(f); return false; }
+    const sz size = (sz)st.st_size;
+    const sz alloc_size = size + (_nul_terminate ? 1u : 0u);
+    u8* data = (u8*)s_malloc(alloc_size);
+    if (data == NULL && alloc_size > 0) { fclose(f); return false; }
     sz read_size = 0;
-    if (size > 0) read_size = fread(data, 1, (sz)size, f);
-    fclose(f);
-    if (read_size != (sz)size) { free(data); return false; }
-    data[(sz)size] = '\0';
+    if (size > 0) read_size = fread(data, 1, size, f);
+    b8 close_ok = fclose(f) == 0;
+    if (read_size != size || !close_ok) { s_free(data); return false; }
+    if (_nul_terminate) data[size] = '\0';
     *_out_data = data;
-    if (_out_size != NULL) *_out_size = (sz)size;
+    if (_out_size != NULL) *_out_size = size;
     return true;
 }
 
-static inline b8 s_file_read_binary(const char* _path, u8** _out_data, sz* _out_size) {
-    if (_path == NULL || _path[0] == '\0' || _out_data == NULL) return false;
-    FILE* f = fopen(_path, "rb");
-    if (f == NULL) return false;
-    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return false; }
-    long size = ftell(f);
-    if (size < 0) { fclose(f); return false; }
-    if (fseek(f, 0, SEEK_SET) != 0) { fclose(f); return false; }
-    u8* data = (u8*)malloc((sz)size);
-    if (data == NULL && size > 0) { fclose(f); return false; }
-    sz read_size = 0;
-    if (size > 0) read_size = fread(data, 1, (sz)size, f);
-    fclose(f);
-    if (read_size != (sz)size) { free(data); return false; }
+S_FILES_DEF b8 s_file_read(const char* _path, char** _out_data, sz* _out_size) {
+    void* data = NULL;
+    if (!s_file_read_alloc(_path, &data, _out_size, true)) return false;
+    *_out_data = (char*)data;
+    return true;
+}
+
+S_FILES_DEF b8 s_file_read_binary(const char* _path, u8** _out_data, sz* _out_size) {
+    void* data = NULL;
+    if (!s_file_read_alloc(_path, &data, _out_size, false)) return false;
     *_out_data = data;
-    if (_out_size != NULL) *_out_size = (sz)size;
     return true;
 }
 
-static inline b8 s_file_write(const char* _path, const char* _data, sz _size) {
+S_FILES_PRIV b8 s_file_write_mode(const char* _path, const void* _data, sz _size, const char* _mode) {
     if (_path == NULL || _path[0] == '\0') return false;
     if (_size > 0 && _data == NULL) return false;
-    FILE* f = fopen(_path, "wb");
+    FILE* f = fopen(_path, _mode);
     if (f == NULL) return false;
-    if (_size > 0 && fwrite(_data, 1, _size, f) != _size) { fclose(f); return false; }
-    fclose(f);
-    return true;
+    b8 ok = true;
+    if (_size > 0 && fwrite(_data, 1, _size, f) != _size) ok = false;
+    if (fclose(f) != 0) ok = false;
+    return ok;
 }
 
-static inline b8 s_file_write_binary(const char* _path, const void* _data, sz _size) {
-    if (_path == NULL || _path[0] == '\0') return false;
-    if (_size > 0 && _data == NULL) return false;
-    FILE* f = fopen(_path, "wb");
-    if (f == NULL) return false;
-    if (_size > 0 && fwrite(_data, 1, _size, f) != _size) { fclose(f); return false; }
-    fclose(f);
-    return true;
+S_FILES_DEF b8 s_file_write(const char* _path, const char* _data, sz _size) {
+    return s_file_write_mode(_path, _data, _size, "wb");
 }
 
-static inline b8 s_file_append(const char* _path, const char* _data, sz _size) {
-    if (_path == NULL || _path[0] == '\0') return false;
-    if (_size > 0 && _data == NULL) return false;
-    FILE* f = fopen(_path, "ab");
-    if (f == NULL) return false;
-    if (_size > 0 && fwrite(_data, 1, _size, f) != _size) { fclose(f); return false; }
-    fclose(f);
-    return true;
+S_FILES_DEF b8 s_file_write_binary(const char* _path, const void* _data, sz _size) {
+    return s_file_write_mode(_path, _data, _size, "wb");
 }
 
-static inline b8 s_file_remove(const char* _path) {
+S_FILES_DEF b8 s_file_append(const char* _path, const char* _data, sz _size) {
+    return s_file_write_mode(_path, _data, _size, "ab");
+}
+
+S_FILES_DEF b8 s_file_remove(const char* _path) {
     if (_path == NULL || _path[0] == '\0') return false;
     return remove(_path) == 0;
 }
 
-static inline b8 s_file_copy(const char* _src, const char* _dst, b8 _overwrite) {
+S_FILES_DEF b8 s_file_copy(const char* _src, const char* _dst, b8 _overwrite) {
     if (_src == NULL || _dst == NULL || _src[0] == '\0' || _dst[0] == '\0') return false;
     if (!_overwrite && s_path_exists(_dst)) return false;
     FILE* fsrc = fopen(_src, "rb");
@@ -404,37 +503,83 @@ static inline b8 s_file_copy(const char* _src, const char* _dst, b8 _overwrite) 
     while ((nread = fread(buf, 1, sizeof(buf), fsrc)) > 0) {
         if (fwrite(buf, 1, nread, fdst) != nread) { fclose(fsrc); fclose(fdst); return false; }
     }
-    if (ferror(fsrc)) { fclose(fsrc); fclose(fdst); return false; }
-    fclose(fsrc);
-    fclose(fdst);
-    return true;
+    b8 ok = true;
+    if (ferror(fsrc)) ok = false;
+    if (fclose(fsrc) != 0) ok = false;
+    if (fclose(fdst) != 0) ok = false;
+    return ok;
 }
 
-static inline b8 s_file_move(const char* _src, const char* _dst, b8 _overwrite) {
+S_FILES_DEF b8 s_file_move(const char* _src, const char* _dst, b8 _overwrite) {
     if (_src == NULL || _dst == NULL || _src[0] == '\0' || _dst[0] == '\0') return false;
     if (!_overwrite && s_path_exists(_dst)) return false;
-    if (_overwrite && s_path_exists(_dst)) {
-        if (!s_file_remove(_dst)) return false;
-    }
     if (rename(_src, _dst) == 0) return true;
-    if (!s_file_copy(_src, _dst, true)) return false;
+
+    const sz dst_len = strlen(_dst);
+    if (dst_len > SIZE_MAX - 64) return false;
+    char* tmp = (char*)s_malloc(dst_len + 64);
+    if (tmp == NULL) return false;
+
+    b8 copied = false;
+    for (u32 i = 0; i < 32u; ++i) {
+        int n = snprintf(tmp, dst_len + 64, "%s.syphax_tmp_%lu_%u", _dst, (unsigned long)time(NULL), i);
+        if (n <= 0 || (sz)n >= dst_len + 64) {
+            s_free(tmp);
+            return false;
+        }
+        if (!s_path_exists(tmp)) {
+            copied = s_file_copy(_src, tmp, false);
+            if (!copied) s_file_remove(tmp);
+            break;
+        }
+    }
+    if (!copied) {
+        s_free(tmp);
+        return false;
+    }
+    if (!_overwrite && s_path_exists(_dst)) {
+        s_file_remove(tmp);
+        s_free(tmp);
+        return false;
+    }
+
+#ifdef _WIN32
+    DWORD move_flags = _overwrite ? MOVEFILE_REPLACE_EXISTING : 0;
+    if (!MoveFileExA(tmp, _dst, move_flags)) {
+        s_file_remove(tmp);
+        s_free(tmp);
+        return false;
+    }
+#else
+    if (rename(tmp, _dst) != 0) {
+        s_file_remove(tmp);
+        s_free(tmp);
+        return false;
+    }
+#endif
+    s_free(tmp);
     return s_file_remove(_src);
 }
 
-static inline b8 s_file_size(const char* _path, sz* _out_size) {
+S_FILES_DEF b8 s_file_size(const char* _path, sz* _out_size) {
     if (_path == NULL || _path[0] == '\0' || _out_size == NULL) return false;
     s_stat_t st;
     if (s_stat(_path, &st) != 0) return false;
+    if (st.st_size < 0 || (uintmax_t)st.st_size > (uintmax_t)SIZE_MAX) return false;
     *_out_size = (sz)st.st_size;
     return true;
 }
 
-static inline b8 s_file_mtime(const char* _path, time_t* _out_mtime) {
+S_FILES_DEF b8 s_file_mtime(const char* _path, time_t* _out_mtime) {
     if (_path == NULL || _path[0] == '\0' || _out_mtime == NULL) return false;
     s_stat_t st;
     if (s_stat(_path, &st) != 0) return false;
     *_out_mtime = st.st_mtime;
     return true;
 }
+
+#undef S_FILES_DEF
+#undef S_FILES_PRIV
+#endif
 
 #endif // S_FILES_H

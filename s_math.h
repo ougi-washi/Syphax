@@ -19,22 +19,38 @@
 #define S_PRECISION f32
 #endif
 
-typedef struct { S_PRECISION x, y; } s_vec2;
-typedef struct { S_PRECISION x, y, z; } s_vec3;
-typedef struct { S_PRECISION x, y, z, w; } s_vec4;
+typedef S_PRECISION s_real;
+
+typedef struct { s_real x, y; } s_vec2;
+typedef struct { s_real x, y, z; } s_vec3;
+typedef struct { s_real x, y, z, w; } s_vec4;
 typedef struct { i32 x, y; } s_ivec2;
 typedef struct { i32 x, y, z; } s_ivec3;
 typedef struct { i32 x, y, z, w; } s_ivec4;
-typedef struct { S_PRECISION m[3][3]; } s_mat3;
-typedef struct { S_PRECISION m[4][4]; } s_mat4;
+typedef struct { u32 x, y; } s_uvec2;
+typedef struct { u32 x, y, z; } s_uvec3;
+typedef struct { u32 x, y, z, w; } s_uvec4;
+typedef struct { s_real m[3][3]; } s_mat3;
+typedef struct { s_real m[4][4]; } s_mat4;
 
 #define s_vec(_vec_size, ...) (s_vec##_vec_size){ __VA_ARGS__ }
+
+static inline s_real s_real_abs(s_real _v) { return (s_real)fabs((double)_v); }
+static inline s_real s_real_sqrt(s_real _v) { return (s_real)sqrt((double)_v); }
+static inline s_real s_real_sin(s_real _v) { return (s_real)sin((double)_v); }
+static inline s_real s_real_cos(s_real _v) { return (s_real)cos((double)_v); }
+static inline s_real s_real_tan(s_real _v) { return (s_real)tan((double)_v); }
+static inline s_real s_real_atan2(s_real _y, s_real _x) { return (s_real)atan2((double)_y, (double)_x); }
+static inline s_real s_real_min(s_real _a, s_real _b) { return _a < _b ? _a : _b; }
+static inline s_real s_real_max(s_real _a, s_real _b) { return _a > _b ? _a : _b; }
+static inline i32 s_i32_abs(i32 _v) { return _v == INT32_MIN ? INT32_MAX : (_v < 0 ? -_v : _v); }
+
 #define s_min(_a_vec, _b_vec) ((_a_vec) < (_b_vec) ? (_a_vec) : (_b_vec))
 #define s_max(_a_vec, _b_vec) ((_a_vec) > (_b_vec) ? (_a_vec) : (_b_vec))
 #define PI 3.14159265359
 
 #ifndef S_EPSILON
-#define S_EPSILON ((S_PRECISION)1e-6f)
+#define S_EPSILON ((s_real)1e-6)
 #endif
 
 static inline b8 s_f32_equal(const f32 _a, const f32 _b, const f32 _eps) {
@@ -45,29 +61,33 @@ static inline b8 s_f64_equal(const f64 _a, const f64 _b, const f64 _eps) {
     return fabs(_a - _b) <= fabs(_eps);
 }
 
-static inline b8 s_precision_equal(const S_PRECISION _a, const S_PRECISION _b, const S_PRECISION _eps) {
-    return fabs(_a - _b) <= fabs(_eps);
+static inline b8 s_precision_equal(const s_real _a, const s_real _b, const s_real _eps) {
+    return s_real_abs(_a - _b) <= s_real_abs(_eps);
 }
 
-static inline b8 s_vec2_equal(const s_vec2* _a, const s_vec2* _b, const S_PRECISION _eps) {
+static inline b8 s_vec2_equal(const s_vec2* _a, const s_vec2* _b, const s_real _eps) {
+    if (_a == NULL || _b == NULL) return false;
     return s_precision_equal(_a->x, _b->x, _eps)
         && s_precision_equal(_a->y, _b->y, _eps);
 }
 
-static inline b8 s_vec3_equal(const s_vec3* _a, const s_vec3* _b, const S_PRECISION _eps) {
+static inline b8 s_vec3_equal(const s_vec3* _a, const s_vec3* _b, const s_real _eps) {
+    if (_a == NULL || _b == NULL) return false;
     return s_precision_equal(_a->x, _b->x, _eps)
         && s_precision_equal(_a->y, _b->y, _eps)
         && s_precision_equal(_a->z, _b->z, _eps);
 }
 
-static inline b8 s_vec4_equal(const s_vec4* _a, const s_vec4* _b, const S_PRECISION _eps) {
+static inline b8 s_vec4_equal(const s_vec4* _a, const s_vec4* _b, const s_real _eps) {
+    if (_a == NULL || _b == NULL) return false;
     return s_precision_equal(_a->x, _b->x, _eps)
         && s_precision_equal(_a->y, _b->y, _eps)
         && s_precision_equal(_a->z, _b->z, _eps)
         && s_precision_equal(_a->w, _b->w, _eps);
 }
 
-static inline b8 s_mat3_equal(const s_mat3* _a, const s_mat3* _b, const S_PRECISION _eps) {
+static inline b8 s_mat3_equal(const s_mat3* _a, const s_mat3* _b, const s_real _eps) {
+    if (_a == NULL || _b == NULL) return false;
     for (u8 row = 0; row < 3; row++) {
         for (u8 col = 0; col < 3; col++) {
             if (!s_precision_equal(_a->m[row][col], _b->m[row][col], _eps)) return false;
@@ -76,7 +96,8 @@ static inline b8 s_mat3_equal(const s_mat3* _a, const s_mat3* _b, const S_PRECIS
     return true;
 }
 
-static inline b8 s_mat4_equal(const s_mat4* _a, const s_mat4* _b, const S_PRECISION _eps) {
+static inline b8 s_mat4_equal(const s_mat4* _a, const s_mat4* _b, const s_real _eps) {
+    if (_a == NULL || _b == NULL) return false;
     for (u8 col = 0; col < 4; col++) {
         for (u8 row = 0; row < 4; row++) {
             if (!s_precision_equal(_a->m[col][row], _b->m[col][row], _eps)) return false;
@@ -87,6 +108,7 @@ static inline b8 s_mat4_equal(const s_mat4* _a, const s_mat4* _b, const S_PRECIS
 
 // s_vec2
 #define s_vec2(_x, _y)                  (s_vec(2, (_x), (_y)))
+#define s_vec2_abs(_vec)                (s_vec2(s_real_abs((_vec)->x), s_real_abs((_vec)->y)))
 #define s_vec2_add(_vec_a, _vec_b)      (s_vec2((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y))
 #define s_vec2_sub(_vec_a, _vec_b)      (s_vec2((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y))
 #define s_vec2_mul(_vec_a, _vec_b)      (s_vec2((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y))
@@ -95,22 +117,23 @@ static inline b8 s_mat4_equal(const s_mat4* _a, const s_mat4* _b, const S_PRECIS
 #define s_vec2_divs(_vec, _s)           (s_vec2((_vec)->x / (_s), (_vec)->y / (_s)))
 #define s_vec2_dot(_vec_a, _vec_b)      ((_vec_a)->x * (_vec_b)->x + (_vec_a)->y * (_vec_b)->y)
 #define s_vec2_cross(_vec_a, _vec_b)    ((_vec_a)->x * (_vec_b)->y - (_vec_a)->y * (_vec_b)->x)
-#define s_vec2_length(_vec)             (sqrtf((_vec)->x * (_vec)->x + (_vec)->y * (_vec)->y))
+#define s_vec2_length(_vec)             (s_real_sqrt((_vec)->x * (_vec)->x + (_vec)->y * (_vec)->y))
 #define s_vec2_lerp(_vec_a, _vec_b, _t)  (s_vec2((_vec_a)->x + (_t) * ((_vec_b)->x - (_vec_a)->x), (_vec_a)->y + (_t) * ((_vec_b)->y - (_vec_a)->y)))
-#define s_vec2_from_angle(_vec)         (s_vec2(cosf(_vec), sinf(_vec)))
-#define s_vec2_to_angle(_vec)           (atan2f((_vec)->y, (_vec)->x))
+#define s_vec2_from_angle(_vec)         (s_vec2(s_real_cos(_vec), s_real_sin(_vec)))
+#define s_vec2_to_angle(_vec)           (s_real_atan2((_vec)->y, (_vec)->x))
 static inline s_vec2 s_vec2_normalize(const s_vec2* _vec) {
-    const S_PRECISION len = s_vec2_length(_vec);
+    const s_real len = s_vec2_length(_vec);
     if (len == 0.0f) return s_vec2(0.0f, 0.0f);
     return s_vec2((_vec)->x / len, (_vec)->y / len);
 }
 static inline s_vec2 s_vec2_reflect(const s_vec2* _vec, const s_vec2* _n) {
-    const S_PRECISION dot = s_vec2_dot(_vec, _n);
+    const s_real dot = s_vec2_dot(_vec, _n);
     return s_vec2(_vec->x - 2.0f * dot * _n->x, _vec->y - 2.0f * dot * _n->y);
 }
 
 // s_vec3
 #define s_vec3(_x, _y, _z)              (s_vec(3, (_x), (_y), (_z)))
+#define s_vec3_abs(_vec)                (s_vec3(s_real_abs((_vec)->x), s_real_abs((_vec)->y), s_real_abs((_vec)->z)))
 #define s_vec3_add(_vec_a, _vec_b)      (s_vec3((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y, (_vec_a)->z + (_vec_b)->z))
 #define s_vec3_sub(_vec_a, _vec_b)      (s_vec3((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y, (_vec_a)->z - (_vec_b)->z))
 #define s_vec3_mul(_vec_a, _vec_b)      (s_vec3((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y, (_vec_a)->z * (_vec_b)->z))
@@ -119,22 +142,23 @@ static inline s_vec2 s_vec2_reflect(const s_vec2* _vec, const s_vec2* _n) {
 #define s_vec3_divs(_vec, _s)           (s_vec3((_vec)->x / (_s), (_vec)->y / (_s), (_vec)->z / (_s)))
 #define s_vec3_dot(_vec_a, _vec_b)      ((_vec_a)->x * (_vec_b)->x + (_vec_a)->y * (_vec_b)->y + (_vec_a)->z * (_vec_b)->z)
 #define s_vec3_cross(_vec_a, _vec_b)    (s_vec3((_vec_a)->y * (_vec_b)->z - (_vec_a)->z * (_vec_b)->y, (_vec_a)->z * (_vec_b)->x - (_vec_a)->x * (_vec_b)->z, (_vec_a)->x * (_vec_b)->y - (_vec_a)->y * (_vec_b)->x))
-#define s_vec3_length(_vec)             (sqrtf((_vec)->x * (_vec)->x + (_vec)->y * (_vec)->y + (_vec)->z * (_vec)->z))
+#define s_vec3_length(_vec)             (s_real_sqrt((_vec)->x * (_vec)->x + (_vec)->y * (_vec)->y + (_vec)->z * (_vec)->z))
 #define s_vec3_lerp(_vec_a, _vec_b, _t) (s_vec3((_vec_a)->x + (_t) * ((_vec_b)->x - (_vec_a)->x), (_vec_a)->y + (_t) * ((_vec_b)->y - (_vec_a)->y), (_vec_a)->z + (_t) * ((_vec_b)->z - (_vec_a)->z)))
-#define s_vec3_from_angle(_vec)       (s_vec3(cosf(_vec), sinf(_vec), 0.0f))
-#define s_vec3_to_angle(_vec)         (atan2f((_vec)->y, (_vec)->x))
+#define s_vec3_from_angle(_vec)       (s_vec3(s_real_cos(_vec), s_real_sin(_vec), 0.0f))
+#define s_vec3_to_angle(_vec)         (s_real_atan2((_vec)->y, (_vec)->x))
 static inline s_vec3 s_vec3_normalize(const s_vec3* _vec) {
-    const S_PRECISION len = s_vec3_length(_vec);
+    const s_real len = s_vec3_length(_vec);
     if (len == 0.0f) return s_vec3(0.0f, 0.0f, 0.0f);
     return s_vec3((_vec)->x / len, (_vec)->y / len, (_vec)->z / len);
 }
 static inline s_vec3 s_vec3_reflect(const s_vec3* _vec, const s_vec3* _n) {
-    const S_PRECISION dot = s_vec3_dot(_vec, _n);
+    const s_real dot = s_vec3_dot(_vec, _n);
     return s_vec3(_vec->x - 2.0f * dot * _n->x, _vec->y - 2.0f * dot * _n->y, _vec->z - 2.0f * dot * _n->z);
 }
 
 // s_vec4
 #define s_vec4(_x, _y, _z, _w)          (s_vec(4, (_x), (_y), (_z), (_w)))
+#define s_vec4_abs(_vec)                (s_vec4(s_real_abs((_vec)->x), s_real_abs((_vec)->y), s_real_abs((_vec)->z), s_real_abs((_vec)->w)))
 #define s_vec4_add(_vec_a, _vec_b)      (s_vec4((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y, (_vec_a)->z + (_vec_b)->z, (_vec_a)->w + (_vec_b)->w))
 #define s_vec4_sub(_vec_a, _vec_b)      (s_vec4((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y, (_vec_a)->z - (_vec_b)->z, (_vec_a)->w - (_vec_b)->w))
 #define s_vec4_mul(_vec_a, _vec_b)      (s_vec4((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y, (_vec_a)->z * (_vec_b)->z, (_vec_a)->w * (_vec_b)->w))
@@ -143,22 +167,23 @@ static inline s_vec3 s_vec3_reflect(const s_vec3* _vec, const s_vec3* _n) {
 #define s_vec4_divs(_vec, _s)           (s_vec4((_vec)->x / (_s), (_vec)->y / (_s), (_vec)->z / (_s), (_vec)->w / (_s)))
 #define s_vec4_dot(_vec_a, _vec_b)      ((_vec_a)->x * (_vec_b)->x + (_vec_a)->y * (_vec_b)->y + (_vec_a)->z * (_vec_b)->z + (_vec_a)->w * (_vec_b)->w)
 #define s_vec4_cross(_vec_a, _vec_b)    (s_vec4((_vec_a)->y * (_vec_b)->z - (_vec_a)->z * (_vec_b)->y, (_vec_a)->z * (_vec_b)->x - (_vec_a)->x * (_vec_b)->z, (_vec_a)->x * (_vec_b)->y - (_vec_a)->y * (_vec_b)->x, 0.0f))
-#define s_vec4_length(_vec)             (sqrtf((_vec)->x * (_vec)->x + (_vec)->y * (_vec)->y + (_vec)->z * (_vec)->z + (_vec)->w * (_vec)->w))
+#define s_vec4_length(_vec)             (s_real_sqrt((_vec)->x * (_vec)->x + (_vec)->y * (_vec)->y + (_vec)->z * (_vec)->z + (_vec)->w * (_vec)->w))
 #define s_vec4_lerp(_vec_a, _vec_b, _t) (s_vec4((_vec_a)->x + (_t) * ((_vec_b)->x - (_vec_a)->x), (_vec_a)->y + (_t) * ((_vec_b)->y - (_vec_a)->y), (_vec_a)->z + (_t) * ((_vec_b)->z - (_vec_a)->z), (_vec_a)->w + (_t) * ((_vec_b)->w - (_vec_a)->w)))
-#define s_vec4_from_angle(_vec)         (s_vec4(cosf(_vec), sinf(_vec), 0.0f, 0.0f))
-#define s_vec4_to_angle(_vec)           (atan2f((_vec)->y, (_vec)->x))
+#define s_vec4_from_angle(_vec)         (s_vec4(s_real_cos(_vec), s_real_sin(_vec), 0.0f, 0.0f))
+#define s_vec4_to_angle(_vec)           (s_real_atan2((_vec)->y, (_vec)->x))
 static inline s_vec4 s_vec4_normalize(const s_vec4* _vec) {
-    const S_PRECISION len = s_vec4_length(_vec);
+    const s_real len = s_vec4_length(_vec);
     if (len == 0.0f) return s_vec4(0.0f, 0.0f, 0.0f, 0.0f);
     return s_vec4((_vec)->x / len, (_vec)->y / len, (_vec)->z / len, (_vec)->w / len);
 }
 static inline s_vec4 s_vec4_reflect(const s_vec4* _vec, const s_vec4* _n) {
-    const S_PRECISION dot = s_vec4_dot(_vec, _n);
+    const s_real dot = s_vec4_dot(_vec, _n);
     return s_vec4(_vec->x - 2.0f * dot * _n->x, _vec->y - 2.0f * dot * _n->y, _vec->z - 2.0f * dot * _n->z, _vec->w - 2.0f * dot * _n->w);
 }
 
 // s_ivec2
 #define s_ivec2(_x, _y)                  ((s_ivec2){ (_x), (_y) })
+#define s_ivec2_abs(_vec)                (s_ivec2(s_i32_abs((_vec)->x), s_i32_abs((_vec)->y)))
 #define s_ivec2_add(_vec_a, _vec_b)      (s_ivec2((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y))
 #define s_ivec2_sub(_vec_a, _vec_b)      (s_ivec2((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y))
 #define s_ivec2_mul(_vec_a, _vec_b)      (s_ivec2((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y))
@@ -166,6 +191,7 @@ static inline s_vec4 s_vec4_reflect(const s_vec4* _vec, const s_vec4* _n) {
 
 // s_ivec3
 #define s_ivec3(_x, _y, _z)              ((s_ivec3){ (_x), (_y), (_z) })
+#define s_ivec3_abs(_vec)                (s_ivec3(s_i32_abs((_vec)->x), s_i32_abs((_vec)->y), s_i32_abs((_vec)->z)))
 #define s_ivec3_add(_vec_a, _vec_b)      (s_ivec3((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y, (_vec_a)->z + (_vec_b)->z))
 #define s_ivec3_sub(_vec_a, _vec_b)      (s_ivec3((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y, (_vec_a)->z - (_vec_b)->z))
 #define s_ivec3_mul(_vec_a, _vec_b)      (s_ivec3((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y, (_vec_a)->z * (_vec_b)->z))
@@ -173,28 +199,52 @@ static inline s_vec4 s_vec4_reflect(const s_vec4* _vec, const s_vec4* _n) {
 
 // s_ivec4
 #define s_ivec4(_x, _y, _z, _w)          ((s_ivec4){ (_x), (_y), (_z), (_w) })
+#define s_ivec4_abs(_vec)                (s_ivec4(s_i32_abs((_vec)->x), s_i32_abs((_vec)->y), s_i32_abs((_vec)->z), s_i32_abs((_vec)->w)))
 #define s_ivec4_add(_vec_a, _vec_b)      (s_ivec4((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y, (_vec_a)->z + (_vec_b)->z, (_vec_a)->w + (_vec_b)->w))
 #define s_ivec4_sub(_vec_a, _vec_b)      (s_ivec4((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y, (_vec_a)->z - (_vec_b)->z, (_vec_a)->w - (_vec_b)->w))
 #define s_ivec4_mul(_vec_a, _vec_b)      (s_ivec4((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y, (_vec_a)->z * (_vec_b)->z, (_vec_a)->w * (_vec_b)->w))
 #define s_ivec4_div(_vec_a, _vec_b)      (s_ivec4((_vec_a)->x / (_vec_b)->x, (_vec_a)->y / (_vec_b)->y, (_vec_a)->z / (_vec_b)->z, (_vec_a)->w / (_vec_b)->w))
 
+// s_uvec2
+#define s_uvec2(_x, _y)                  ((s_uvec2){ (_x), (_y) })
+#define s_uvec2_add(_vec_a, _vec_b)      (s_uvec2((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y))
+#define s_uvec2_sub(_vec_a, _vec_b)      (s_uvec2((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y))
+#define s_uvec2_mul(_vec_a, _vec_b)      (s_uvec2((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y))
+#define s_uvec2_div(_vec_a, _vec_b)      (s_uvec2((_vec_a)->x / (_vec_b)->x, (_vec_a)->y / (_vec_b)->y))
+
+// s_uvec3
+#define s_uvec3(_x, _y, _z)              ((s_uvec3){ (_x), (_y), (_z) })
+#define s_uvec3_add(_vec_a, _vec_b)      (s_uvec3((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y, (_vec_a)->z + (_vec_b)->z))
+#define s_uvec3_sub(_vec_a, _vec_b)      (s_uvec3((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y, (_vec_a)->z - (_vec_b)->z))
+#define s_uvec3_mul(_vec_a, _vec_b)      (s_uvec3((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y, (_vec_a)->z * (_vec_b)->z))
+#define s_uvec3_div(_vec_a, _vec_b)      (s_uvec3((_vec_a)->x / (_vec_b)->x, (_vec_a)->y / (_vec_b)->y, (_vec_a)->z / (_vec_b)->z))
+
+// s_uvec4
+#define s_uvec4(_x, _y, _z, _w)          ((s_uvec4){ (_x), (_y), (_z), (_w) })
+#define s_uvec4_add(_vec_a, _vec_b)      (s_uvec4((_vec_a)->x + (_vec_b)->x, (_vec_a)->y + (_vec_b)->y, (_vec_a)->z + (_vec_b)->z, (_vec_a)->w + (_vec_b)->w))
+#define s_uvec4_sub(_vec_a, _vec_b)      (s_uvec4((_vec_a)->x - (_vec_b)->x, (_vec_a)->y - (_vec_b)->y, (_vec_a)->z - (_vec_b)->z, (_vec_a)->w - (_vec_b)->w))
+#define s_uvec4_mul(_vec_a, _vec_b)      (s_uvec4((_vec_a)->x * (_vec_b)->x, (_vec_a)->y * (_vec_b)->y, (_vec_a)->z * (_vec_b)->z, (_vec_a)->w * (_vec_b)->w))
+#define s_uvec4_div(_vec_a, _vec_b)      (s_uvec4((_vec_a)->x / (_vec_b)->x, (_vec_a)->y / (_vec_b)->y, (_vec_a)->z / (_vec_b)->z, (_vec_a)->w / (_vec_b)->w))
+
 // s_mat3
+// Matrices use column-major storage: m[column][row]. Transform helpers assume
+// column vectors, so translation lives in the last column.
 #define s_mat3(_m00, _m01, _m02, _m10, _m11, _m12, _m20, _m21, _m22) \
 	(s_mat3){ \
 		.m = { \
-			{ _m00, _m01, _m02 }, \
-			{ _m10, _m11, _m12 }, \
-			{ _m20, _m21, _m22 } \
+			{ _m00, _m10, _m20 }, \
+			{ _m01, _m11, _m21 }, \
+			{ _m02, _m12, _m22 } \
 		} \
 	}
 #define s_mat3_identity (s_mat3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f))
 static inline s_mat3 s_mat3_mul(const s_mat3* _mat_a, const s_mat3* _mat_b) {
     s_mat3 result;
-    for (u8 i = 0; i < 3; i++) {
-        for (u8 j = 0; j < 3; j++) {
-            result.m[i][j] = 0.0f;
+    for (u8 c = 0; c < 3; c++) {
+        for (u8 r = 0; r < 3; r++) {
+            result.m[c][r] = 0.0f;
             for (u8 k = 0; k < 3; k++) {
-                result.m[i][j] += _mat_a->m[i][k] * _mat_b->m[k][j];
+                result.m[c][r] += _mat_a->m[k][r] * _mat_b->m[c][k];
             }
         }
     }
@@ -205,42 +255,64 @@ static inline s_mat3 s_mat3_mul(const s_mat3* _mat_a, const s_mat3* _mat_b) {
 	(_mat)->m[0][1], (_mat)->m[1][1], (_mat)->m[2][1], \
 	(_mat)->m[0][2], (_mat)->m[1][2], (_mat)->m[2][2] \
 ))
-static inline s_mat3 s_mat3_inverse(const s_mat3* _mat) {
-    s_mat3 inv = *_mat;
-    S_PRECISION aug[3][6];
+static inline b8 s_mat3_inverse_checked(const s_mat3* _mat, s_mat3* _out) {
+    if (_mat == NULL || _out == NULL) return false;
+    s_real aug[3][6];
     for (u8 i = 0; i < 3; i++) {
-        for (u8 j = 0; j < 3; j++) aug[i][j] = inv.m[i][j];
+        for (u8 j = 0; j < 3; j++) aug[i][j] = _mat->m[j][i];
         for (u8 j = 0; j < 3; j++) aug[i][j + 3] = (i == j) ? 1.0f : 0.0f;
     }
     for (u8 i = 0; i < 3; i++) {
-        f32 pivot = aug[i][i];
-        if (pivot == 0.0f) return s_mat3_identity;
+        u8 pivot_row = i;
+        s_real pivot_abs = s_real_abs(aug[i][i]);
+        for (u8 r = (u8)(i + 1); r < 3; ++r) {
+            s_real value_abs = s_real_abs(aug[r][i]);
+            if (value_abs > pivot_abs) {
+                pivot_abs = value_abs;
+                pivot_row = r;
+            }
+        }
+        if (pivot_abs <= S_EPSILON) return false;
+        if (pivot_row != i) {
+            for (u8 j = 0; j < 6; ++j) {
+                s_real tmp = aug[i][j];
+                aug[i][j] = aug[pivot_row][j];
+                aug[pivot_row][j] = tmp;
+            }
+        }
+        s_real pivot = aug[i][i];
         for (u8 j = 0; j < 6; j++) aug[i][j] /= pivot;
         for (u8 k = 0; k < 3; k++) {
             if (k != i) {
-                f32 factor = aug[k][i];
+                s_real factor = aug[k][i];
                 for (u8 j = 0; j < 6; j++) aug[k][j] -= factor * aug[i][j];
             }
         }
     }
     for (u8 i = 0; i < 3; i++)
         for (u8 j = 0; j < 3; j++)
-            inv.m[i][j] = aug[i][j + 3];
+            _out->m[j][i] = aug[i][j + 3];
+    return true;
+}
+static inline s_mat3 s_mat3_inverse(const s_mat3* _mat) {
+    s_mat3 inv = s_mat3_identity;
+    if (!s_mat3_inverse_checked(_mat, &inv)) return s_mat3_identity;
     return inv;
 }
-#define s_mat3_translate(_mat, _v)        (s_mat3_mul((_mat), &(s_mat3){ { {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {(_v)->x, (_v)->y, 1.0f} } }))
+#define s_mat3_translate(_mat, _v)        (s_mat3_mul((_mat), &(s_mat3(1.0f, 0.0f, (_v)->x, 0.0f, 1.0f, (_v)->y, 0.0f, 0.0f, 1.0f))))
 #define s_mat3_set_translation(_mat, _v)  { (_mat)->m[2][0] = (_v)->x; (_mat)->m[2][1] = (_v)->y; }
 #define s_mat3_get_translation(_mat)      (s_vec2((_mat)->m[2][0], (_mat)->m[2][1]))
-#define s_mat3_rotate(_mat, _angle)       (s_mat3_mul((_mat), &(s_mat3){ { {cosf(_angle), sinf(_angle), 0.0f}, {-sinf(_angle), cosf(_angle), 0.0f}, {0.0f, 0.0f, 1.0f} } }))
-#define s_mat3_set_rotation(_mat, _angle) { (_mat)->m[0][0] = cosf(_angle); (_mat)->m[0][1] = sinf(_angle); (_mat)->m[1][0] = -sinf(_angle); (_mat)->m[1][1] = cosf(_angle); }
-#define s_mat3_get_rotation(_mat)         (atan2f(-(_mat)->m[1][0], (_mat)->m[0][0]))
-#define s_mat3_scale(_mat, _v)            (s_mat3_mul((_mat), &(s_mat3){ { {(_v)->x, 0.0f, 0.0f}, {0.0f, (_v)->y, 0.0f}, {0.0f, 0.0f, 1.0f} } }))
+#define s_mat3_rotate(_mat, _angle)       (s_mat3_mul((_mat), &(s_mat3(s_real_cos(_angle), -s_real_sin(_angle), 0.0f, s_real_sin(_angle), s_real_cos(_angle), 0.0f, 0.0f, 0.0f, 1.0f))))
+#define s_mat3_set_rotation(_mat, _angle) { (_mat)->m[0][0] = s_real_cos(_angle); (_mat)->m[1][0] = -s_real_sin(_angle); (_mat)->m[0][1] = s_real_sin(_angle); (_mat)->m[1][1] = s_real_cos(_angle); }
+#define s_mat3_get_rotation(_mat)         (s_real_atan2((_mat)->m[0][1], (_mat)->m[0][0]))
+#define s_mat3_scale(_mat, _v)            (s_mat3_mul((_mat), &(s_mat3((_v)->x, 0.0f, 0.0f, 0.0f, (_v)->y, 0.0f, 0.0f, 0.0f, 1.0f))))
 #define s_mat3_set_scale(_mat, _v)        { (_mat)->m[0][0] = (_v)->x; (_mat)->m[1][1] = (_v)->y; }
 #define s_mat3_get_scale(_mat)            (s_vec2((_mat)->m[0][0], (_mat)->m[1][1]))
-#define s_mat3_shear(_mat, _v)            (s_mat3_mul((_mat), &(s_mat3){ { {1.0f, (_v)->y, 0.0f}, {(_v)->x, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} } }))
+#define s_mat3_shear(_mat, _v)            (s_mat3_mul((_mat), &(s_mat3(1.0f, (_v)->y, 0.0f, (_v)->x, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
 #define s_mat3_set_shear(_mat, _v)        { (_mat)->m[0][1] = (_v)->y; (_mat)->m[1][0] = (_v)->x; }
 #define s_mat3_get_shear(_mat)            (s_vec2((_mat)->m[1][0], (_mat)->m[0][1]))
 static inline s_mat3 s_mat3_look_at(const s_vec3* _from, const s_vec3* _to, const s_vec3* _up) {
+    if (_from == NULL || _to == NULL || _up == NULL) return s_mat3_identity;
     s_vec3 f = s_vec3_sub(_to, _from);
     f.z = 0.0f;
     f = s_vec3_normalize(&f);
@@ -283,60 +355,68 @@ static inline s_mat4 s_mat4_mul(const s_mat4* _mat_a, const s_mat4* _mat_b) {
 	(_mat)->m[0][2], (_mat)->m[1][2], (_mat)->m[2][2], (_mat)->m[3][2], \
 	(_mat)->m[0][3], (_mat)->m[1][3], (_mat)->m[2][3], (_mat)->m[3][3] \
 ))
-static inline s_mat4 s_mat4_inverse(const s_mat4* _mat) {
-    s_mat4 inv = *_mat;
-    S_PRECISION aug[4][8];
+static inline b8 s_mat4_inverse_checked(const s_mat4* _mat, s_mat4* _out) {
+    if (_mat == NULL || _out == NULL) return false;
+    s_real aug[4][8];
     for (u8 i = 0; i < 4; i++) {
-        for (u8 j = 0; j < 4; j++) aug[i][j] = inv.m[j][i];
+        for (u8 j = 0; j < 4; j++) aug[i][j] = _mat->m[j][i];
         for (u8 j = 0; j < 4; j++) aug[i][j + 4] = (i == j) ? 1.0f : 0.0f;
     }
     for (u8 i = 0; i < 4; i++) {
-        f32 pivot = aug[i][i];
-        if (pivot == 0.0f) return s_mat4_identity;
+        u8 pivot_row = i;
+        s_real pivot_abs = s_real_abs(aug[i][i]);
+        for (u8 r = (u8)(i + 1); r < 4; ++r) {
+            s_real value_abs = s_real_abs(aug[r][i]);
+            if (value_abs > pivot_abs) {
+                pivot_abs = value_abs;
+                pivot_row = r;
+            }
+        }
+        if (pivot_abs <= S_EPSILON) return false;
+        if (pivot_row != i) {
+            for (u8 j = 0; j < 8; ++j) {
+                s_real tmp = aug[i][j];
+                aug[i][j] = aug[pivot_row][j];
+                aug[pivot_row][j] = tmp;
+            }
+        }
+        s_real pivot = aug[i][i];
         for (u8 j = 0; j < 8; j++) aug[i][j] /= pivot;
         for (u8 k = 0; k < 4; k++) {
             if (k != i) {
-                f32 factor = aug[k][i];
+                s_real factor = aug[k][i];
                 for (u8 j = 0; j < 8; j++) aug[k][j] -= factor * aug[i][j];
             }
         }
     }
     for (u8 i = 0; i < 4; i++)
         for (u8 j = 0; j < 4; j++)
-            inv.m[j][i] = aug[i][j + 4];
+            _out->m[j][i] = aug[i][j + 4];
+    return true;
+}
+static inline s_mat4 s_mat4_inverse(const s_mat4* _mat) {
+    s_mat4 inv = s_mat4_identity;
+    if (!s_mat4_inverse_checked(_mat, &inv)) return s_mat4_identity;
     return inv;
 }
 #define s_mat4_translate(_mat, _v)          (s_mat4_mul((_mat), &(s_mat4(1.0f, 0.0f, 0.0f, (_v)->x, 0.0f, 1.0f, 0.0f, (_v)->y, 0.0f, 0.0f, 1.0f, (_v)->z, 0.0f, 0.0f, 0.0f, 1.0f))))
 #define s_mat4_set_translation(_mat, _v)    { (_mat)->m[3][0] = (_v)->x; (_mat)->m[3][1] = (_v)->y; (_mat)->m[3][2] = (_v)->z; }
 #define s_mat4_get_translation(_mat)        (s_vec3((_mat)->m[3][0], (_mat)->m[3][1], (_mat)->m[3][2]))
-#define s_mat4_rotate_x(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, cosf(_angle), -sinf(_angle), 0.0f, 0.0f, sinf(_angle), cosf(_angle), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
-#define s_mat4_set_rotation_x(_mat, _angle) { (_mat)->m[1][1] = cosf(_angle); (_mat)->m[1][2] = sinf(_angle); (_mat)->m[2][1] = -sinf(_angle); (_mat)->m[2][2] = cosf(_angle); }
-#define s_mat4_get_rotation_x(_mat)         (atan2f((_mat)->m[1][2], (_mat)->m[1][1]))
-#define s_mat4_rotate_y(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4){ { {cosf(_angle), 0.0f, sinf(_angle), 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {-sinf(_angle), 0.0f, cosf(_angle), 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f} } }))
-#define s_mat4_set_rotation_y(_mat, _angle) { (_mat)->m[0][0] = cosf(_angle); (_mat)->m[0][2] = -sinf(_angle); (_mat)->m[2][0] = sinf(_angle); (_mat)->m[2][2] = cosf(_angle); }
-#define s_mat4_get_rotation_y(_mat)         (atan2f((_mat)->m[2][0], (_mat)->m[0][0]))
-#define s_mat4_rotate_z(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4){ { {cosf(_angle), -sinf(_angle), 0.0f, 0.0f}, {sinf(_angle), cosf(_angle), 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f} } }))
-#define s_mat4_set_rotation_z(_mat, _angle) { (_mat)->m[0][0] = cosf(_angle); (_mat)->m[0][1] = -sinf(_angle); (_mat)->m[1][0] = sinf(_angle); (_mat)->m[1][1] = cosf(_angle); }
-#define s_mat4_get_rotation_z(_mat)         (atan2f((_mat)->m[1][0], (_mat)->m[0][0]))
-#define s_mat4_scale(_mat, _v)              (s_mat4_mul((_mat), &(s_mat4){ { {(_v)->x, 0.0f, 0.0f, 0.0f}, {0.0f, (_v)->y, 0.0f, 0.0f}, {0.0f, 0.0f, (_v)->z, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f} } }))
+#define s_mat4_rotate_x(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, s_real_cos(_angle), -s_real_sin(_angle), 0.0f, 0.0f, s_real_sin(_angle), s_real_cos(_angle), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
+#define s_mat4_set_rotation_x(_mat, _angle) { (_mat)->m[1][1] = s_real_cos(_angle); (_mat)->m[1][2] = s_real_sin(_angle); (_mat)->m[2][1] = -s_real_sin(_angle); (_mat)->m[2][2] = s_real_cos(_angle); }
+#define s_mat4_get_rotation_x(_mat)         (s_real_atan2((_mat)->m[1][2], (_mat)->m[1][1]))
+#define s_mat4_rotate_y(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4(s_real_cos(_angle), 0.0f, s_real_sin(_angle), 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, -s_real_sin(_angle), 0.0f, s_real_cos(_angle), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
+#define s_mat4_set_rotation_y(_mat, _angle) { (_mat)->m[0][0] = s_real_cos(_angle); (_mat)->m[2][0] = s_real_sin(_angle); (_mat)->m[0][2] = -s_real_sin(_angle); (_mat)->m[2][2] = s_real_cos(_angle); }
+#define s_mat4_get_rotation_y(_mat)         (s_real_atan2((_mat)->m[2][0], (_mat)->m[0][0]))
+#define s_mat4_rotate_z(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4(s_real_cos(_angle), -s_real_sin(_angle), 0.0f, 0.0f, s_real_sin(_angle), s_real_cos(_angle), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
+#define s_mat4_set_rotation_z(_mat, _angle) { (_mat)->m[0][0] = s_real_cos(_angle); (_mat)->m[0][1] = s_real_sin(_angle); (_mat)->m[1][0] = -s_real_sin(_angle); (_mat)->m[1][1] = s_real_cos(_angle); }
+#define s_mat4_get_rotation_z(_mat)         (s_real_atan2((_mat)->m[0][1], (_mat)->m[0][0]))
+#define s_mat4_scale(_mat, _v)              (s_mat4_mul((_mat), &(s_mat4((_v)->x, 0.0f, 0.0f, 0.0f, 0.0f, (_v)->y, 0.0f, 0.0f, 0.0f, 0.0f, (_v)->z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
 #define s_mat4_set_scale(_mat, _v)          { (_mat)->m[0][0] = (_v)->x; (_mat)->m[1][1] = (_v)->y; (_mat)->m[2][2] = (_v)->z; }
 #define s_mat4_get_scale(_mat)              (s_vec3((_mat)->m[0][0], (_mat)->m[1][1], (_mat)->m[2][2]))
-#undef s_mat4_rotate_y
-#define s_mat4_rotate_y(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4(cosf(_angle), 0.0f, sinf(_angle), 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, -sinf(_angle), 0.0f, cosf(_angle), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
-#undef s_mat4_set_rotation_y
-#define s_mat4_set_rotation_y(_mat, _angle) { (_mat)->m[0][0] = cosf(_angle); (_mat)->m[2][0] = sinf(_angle); (_mat)->m[0][2] = -sinf(_angle); (_mat)->m[2][2] = cosf(_angle); }
-#undef s_mat4_get_rotation_y
-#define s_mat4_get_rotation_y(_mat)         (atan2f((_mat)->m[2][0], (_mat)->m[0][0]))
-#undef s_mat4_rotate_z
-#define s_mat4_rotate_z(_mat, _angle)       (s_mat4_mul((_mat), &(s_mat4(cosf(_angle), -sinf(_angle), 0.0f, 0.0f, sinf(_angle), cosf(_angle), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
-#undef s_mat4_set_rotation_z
-#define s_mat4_set_rotation_z(_mat, _angle) { (_mat)->m[0][0] = cosf(_angle); (_mat)->m[0][1] = sinf(_angle); (_mat)->m[1][0] = -sinf(_angle); (_mat)->m[1][1] = cosf(_angle); }
-#undef s_mat4_get_rotation_z
-#define s_mat4_get_rotation_z(_mat)         (atan2f((_mat)->m[0][1], (_mat)->m[0][0]))
-#undef s_mat4_scale
-#define s_mat4_scale(_mat, _v)              (s_mat4_mul((_mat), &(s_mat4((_v)->x, 0.0f, 0.0f, 0.0f, 0.0f, (_v)->y, 0.0f, 0.0f, 0.0f, 0.0f, (_v)->z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f))))
 static inline s_mat4 s_mat4_look_at(const s_vec3* _from, const s_vec3* _to, const s_vec3* _up) {
-    const S_PRECISION eps = 0.000001f;
+    if (_from == NULL || _to == NULL || _up == NULL) return s_mat4_identity;
+    const s_real eps = S_EPSILON;
     s_vec3 f = s_vec3_sub(_to, _from);
     if (s_vec3_length(&f) <= eps) {
         f = s_vec3(0.0f, 0.0f, -1.0f);
@@ -353,7 +433,7 @@ static inline s_mat4 s_mat4_look_at(const s_vec3* _from, const s_vec3* _to, cons
 
     s_vec3 s = s_vec3_cross(&f, &up);
     if (s_vec3_length(&s) <= eps) {
-        const s_vec3 fallback_up = (fabsf(f.y) > 0.999f)
+        const s_vec3 fallback_up = (s_real_abs(f.y) > 0.999f)
             ? s_vec3(0.0f, 0.0f, 1.0f)
             : s_vec3(0.0f, 1.0f, 0.0f);
         s = s_vec3_cross(&f, &fallback_up);
@@ -368,8 +448,8 @@ static inline s_mat4 s_mat4_look_at(const s_vec3* _from, const s_vec3* _to, cons
 		0.0f, 0.0f, 0.0f, 1.0f
     );
 }
-static inline s_mat4 s_mat4_perspective(const S_PRECISION _fov, const S_PRECISION _aspect, const S_PRECISION _near, const S_PRECISION _far) {
-    S_PRECISION tanHalfFov = tanf(_fov / 2.0f);
+static inline s_mat4 s_mat4_perspective(const s_real _fov, const s_real _aspect, const s_real _near, const s_real _far) {
+    s_real tanHalfFov = s_real_tan(_fov / 2.0f);
     return s_mat4(
         1.0f / (_aspect * tanHalfFov), 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f / tanHalfFov, 0.0f, 0.0f,
@@ -377,7 +457,7 @@ static inline s_mat4 s_mat4_perspective(const S_PRECISION _fov, const S_PRECISIO
         0.0f, 0.0f, -1.0f, 0.0f
     );
 }
-static inline s_mat4 s_mat4_ortho(const S_PRECISION _left, const S_PRECISION _right, const S_PRECISION _bottom, const S_PRECISION _top, const S_PRECISION _near, const S_PRECISION _far) {
+static inline s_mat4 s_mat4_ortho(const s_real _left, const s_real _right, const s_real _bottom, const s_real _top, const s_real _near, const s_real _far) {
     return s_mat4(
         2.0f / (_right - _left), 0.0f, 0.0f, -(_right + _left) / (_right - _left),
         0.0f, 2.0f / (_top - _bottom), 0.0f, -(_top + _bottom) / (_top - _bottom),
@@ -387,10 +467,10 @@ static inline s_mat4 s_mat4_ortho(const S_PRECISION _left, const S_PRECISION _ri
 }
 typedef struct { s_vec2 min, max; } s_box_2d;
 typedef struct { s_vec3 min, max; } s_box_3d;
-typedef struct { s_vec2 position; f32 radius; } s_circle;
-typedef struct { s_vec3 position; f32 radius; } s_sphere;
+typedef struct { s_vec2 position; s_real radius; } s_circle;
+typedef struct { s_vec3 position; s_real radius; } s_sphere;
 
-static inline f32 s_clamp(const f32 value, const f32 min_value, const f32 max_value) {
+static inline s_real s_clamp(const s_real value, const s_real min_value, const s_real max_value) {
 	if (value < min_value) {
 		return min_value;
 	}
@@ -400,27 +480,27 @@ static inline f32 s_clamp(const f32 value, const f32 min_value, const f32 max_va
 	return value;
 }
 
-static inline f32 s_clamp01(const f32 value) {
+static inline s_real s_clamp01(const s_real value) {
 	return s_clamp(value, 0.0f, 1.0f);
 }
 
-static inline f32 s_min3(const f32 a, const f32 b, const f32 c) {
-	return s_min(a, s_min(b, c));
+static inline s_real s_min3(const s_real a, const s_real b, const s_real c) {
+	return s_real_min(a, s_real_min(b, c));
 }
 
-static inline f32 s_max3(const f32 a, const f32 b, const f32 c) {
-	return s_max(a, s_max(b, c));
+static inline s_real s_max3(const s_real a, const s_real b, const s_real c) {
+	return s_real_max(a, s_real_max(b, c));
 }
 
-static inline f32 s_vec2_length_sq(const s_vec2* v) {
+static inline s_real s_vec2_length_sq(const s_vec2* v) {
 	return v ? (v->x * v->x) + (v->y * v->y) : 0.0f;
 }
 
-static inline f32 s_vec3_length_sq(const s_vec3* v) {
+static inline s_real s_vec3_length_sq(const s_vec3* v) {
 	return v ? (v->x * v->x) + (v->y * v->y) + (v->z * v->z) : 0.0f;
 }
 
-static inline f32 s_vec4_length_sq(const s_vec4* v) {
+static inline s_real s_vec4_length_sq(const s_vec4* v) {
 	return v ? (v->x * v->x) + (v->y * v->y) + (v->z * v->z) + (v->w * v->w) : 0.0f;
 }
 
@@ -446,21 +526,21 @@ static inline s_vec2 s_vec2_perp(const s_vec2* v) {
 	return v ? s_vec2(-v->y, v->x) : s_vec2(0.0f, 0.0f);
 }
 
-static inline s_vec2 s_vec2_rotate(const s_vec2* v, const f32 angle) {
+static inline s_vec2 s_vec2_rotate(const s_vec2* v, const s_real angle) {
 	if (!v) {
 		return s_vec2(0.0f, 0.0f);
 	}
-	const f32 c = cosf(angle);
-	const f32 s = sinf(angle);
+	const s_real c = s_real_cos(angle);
+	const s_real s = s_real_sin(angle);
 	return s_vec2((v->x * c) - (v->y * s), (v->x * s) + (v->y * c));
 }
 
-static inline s_vec2 s_vec2_rotate_inv(const s_vec2* v, const f32 angle) {
+static inline s_vec2 s_vec2_rotate_inv(const s_vec2* v, const s_real angle) {
 	if (!v) {
 		return s_vec2(0.0f, 0.0f);
 	}
-	const f32 c = cosf(angle);
-	const f32 s = sinf(angle);
+	const s_real c = s_real_cos(angle);
+	const s_real s = s_real_sin(angle);
 	return s_vec2((v->x * c) + (v->y * s), (-v->x * s) + (v->y * c));
 }
 
@@ -468,21 +548,21 @@ static inline s_vec3 s_vec3_rotate(const s_vec3* v, const s_vec3* rotation) {
 	if (!v || !rotation) {
 		return s_vec3(0.0f, 0.0f, 0.0f);
 	}
-	const f32 cx = cosf(rotation->x);
-	const f32 sx = sinf(rotation->x);
-	const f32 cy = cosf(rotation->y);
-	const f32 sy = sinf(rotation->y);
-	const f32 cz = cosf(rotation->z);
-	const f32 sz = sinf(rotation->z);
-	const f32 m00 = cz * cy;
-	const f32 m01 = (cz * sy * sx) - (sz * cx);
-	const f32 m02 = (cz * sy * cx) + (sz * sx);
-	const f32 m10 = sz * cy;
-	const f32 m11 = (sz * sy * sx) + (cz * cx);
-	const f32 m12 = (sz * sy * cx) - (cz * sx);
-	const f32 m20 = -sy;
-	const f32 m21 = cy * sx;
-	const f32 m22 = cy * cx;
+	const s_real cx = s_real_cos(rotation->x);
+	const s_real sx = s_real_sin(rotation->x);
+	const s_real cy = s_real_cos(rotation->y);
+	const s_real sy = s_real_sin(rotation->y);
+	const s_real cz = s_real_cos(rotation->z);
+	const s_real sz = s_real_sin(rotation->z);
+	const s_real m00 = cz * cy;
+	const s_real m01 = (cz * sy * sx) - (sz * cx);
+	const s_real m02 = (cz * sy * cx) + (sz * sx);
+	const s_real m10 = sz * cy;
+	const s_real m11 = (sz * sy * sx) + (cz * cx);
+	const s_real m12 = (sz * sy * cx) - (cz * sx);
+	const s_real m20 = -sy;
+	const s_real m21 = cy * sx;
+	const s_real m22 = cy * cx;
 	return s_vec3(
 		(v->x * m00) + (v->y * m01) + (v->z * m02),
 		(v->x * m10) + (v->y * m11) + (v->z * m12),
@@ -494,21 +574,21 @@ static inline s_vec3 s_vec3_rotate_inv(const s_vec3* v, const s_vec3* rotation) 
 	if (!v || !rotation) {
 		return s_vec3(0.0f, 0.0f, 0.0f);
 	}
-	const f32 cx = cosf(rotation->x);
-	const f32 sx = sinf(rotation->x);
-	const f32 cy = cosf(rotation->y);
-	const f32 sy = sinf(rotation->y);
-	const f32 cz = cosf(rotation->z);
-	const f32 sz = sinf(rotation->z);
-	const f32 m00 = cz * cy;
-	const f32 m01 = (cz * sy * sx) - (sz * cx);
-	const f32 m02 = (cz * sy * cx) + (sz * sx);
-	const f32 m10 = sz * cy;
-	const f32 m11 = (sz * sy * sx) + (cz * cx);
-	const f32 m12 = (sz * sy * cx) - (cz * sx);
-	const f32 m20 = -sy;
-	const f32 m21 = cy * sx;
-	const f32 m22 = cy * cx;
+	const s_real cx = s_real_cos(rotation->x);
+	const s_real sx = s_real_sin(rotation->x);
+	const s_real cy = s_real_cos(rotation->y);
+	const s_real sy = s_real_sin(rotation->y);
+	const s_real cz = s_real_cos(rotation->z);
+	const s_real sz = s_real_sin(rotation->z);
+	const s_real m00 = cz * cy;
+	const s_real m01 = (cz * sy * sx) - (sz * cx);
+	const s_real m02 = (cz * sy * cx) + (sz * sx);
+	const s_real m10 = sz * cy;
+	const s_real m11 = (sz * sy * sx) + (cz * cx);
+	const s_real m12 = (sz * sy * cx) - (cz * sx);
+	const s_real m20 = -sy;
+	const s_real m21 = cy * sx;
+	const s_real m22 = cy * cx;
 	return s_vec3(
 		(v->x * m00) + (v->y * m10) + (v->z * m20),
 		(v->x * m01) + (v->y * m11) + (v->z * m21),
@@ -516,17 +596,17 @@ static inline s_vec3 s_vec3_rotate_inv(const s_vec3* v, const s_vec3* rotation) 
 	);
 }
 
-static inline s_vec3 s_vec3_rotate_axis(const s_vec3* v, const s_vec3* axis, const f32 radians) {
+static inline s_vec3 s_vec3_rotate_axis(const s_vec3* v, const s_vec3* axis, const s_real radians) {
 	if (!v || !axis) {
 		return s_vec3(0.0f, 0.0f, 0.0f);
 	}
-	const f32 axis_len = s_vec3_length(axis);
-	if (axis_len <= S_EPSILON || fabsf(radians) <= S_EPSILON) {
+	const s_real axis_len = s_vec3_length(axis);
+	if (axis_len <= S_EPSILON || s_real_abs(radians) <= S_EPSILON) {
 		return *v;
 	}
 	const s_vec3 unit_axis = s_vec3_divs(axis, axis_len);
-	const f32 c = cosf(radians);
-	const f32 s = sinf(radians);
+	const s_real c = s_real_cos(radians);
+	const s_real s = s_real_sin(radians);
 	const s_vec3 term_a = s_vec3_muls(v, c);
 	const s_vec3 cross = s_vec3_cross(&unit_axis, v);
 	const s_vec3 term_b = s_vec3_muls(&cross, s);
@@ -566,11 +646,11 @@ static inline s_vec3 s_mat4_mul_point(const s_mat4* transform, const s_vec3* poi
 	if (!transform || !point) {
 		return s_vec3(0.0f, 0.0f, 0.0f);
 	}
-	const f32 x = (transform->m[0][0] * point->x) + (transform->m[1][0] * point->y) + (transform->m[2][0] * point->z) + transform->m[3][0];
-	const f32 y = (transform->m[0][1] * point->x) + (transform->m[1][1] * point->y) + (transform->m[2][1] * point->z) + transform->m[3][1];
-	const f32 z = (transform->m[0][2] * point->x) + (transform->m[1][2] * point->y) + (transform->m[2][2] * point->z) + transform->m[3][2];
-	const f32 w = (transform->m[0][3] * point->x) + (transform->m[1][3] * point->y) + (transform->m[2][3] * point->z) + transform->m[3][3];
-	if (fabsf(w) > S_EPSILON) {
+	const s_real x = (transform->m[0][0] * point->x) + (transform->m[1][0] * point->y) + (transform->m[2][0] * point->z) + transform->m[3][0];
+	const s_real y = (transform->m[0][1] * point->x) + (transform->m[1][1] * point->y) + (transform->m[2][1] * point->z) + transform->m[3][1];
+	const s_real z = (transform->m[0][2] * point->x) + (transform->m[1][2] * point->y) + (transform->m[2][2] * point->z) + transform->m[3][2];
+	const s_real w = (transform->m[0][3] * point->x) + (transform->m[1][3] * point->y) + (transform->m[2][3] * point->z) + transform->m[3][3];
+	if (s_real_abs(w) > S_EPSILON) {
 		return s_vec3(x / w, y / w, z / w);
 	}
 	return s_vec3(x, y, z);
@@ -581,9 +661,9 @@ static inline s_vec3 s_mat4_extract_basis_scale(const s_mat4* transform) {
 		return s_vec3(1.0f, 1.0f, 1.0f);
 	}
 	return s_vec3(
-		sqrtf((transform->m[0][0] * transform->m[0][0]) + (transform->m[0][1] * transform->m[0][1]) + (transform->m[0][2] * transform->m[0][2])),
-		sqrtf((transform->m[1][0] * transform->m[1][0]) + (transform->m[1][1] * transform->m[1][1]) + (transform->m[1][2] * transform->m[1][2])),
-		sqrtf((transform->m[2][0] * transform->m[2][0]) + (transform->m[2][1] * transform->m[2][1]) + (transform->m[2][2] * transform->m[2][2]))
+		s_real_sqrt((transform->m[0][0] * transform->m[0][0]) + (transform->m[0][1] * transform->m[0][1]) + (transform->m[0][2] * transform->m[0][2])),
+		s_real_sqrt((transform->m[1][0] * transform->m[1][0]) + (transform->m[1][1] * transform->m[1][1]) + (transform->m[1][2] * transform->m[1][2])),
+		s_real_sqrt((transform->m[2][0] * transform->m[2][0]) + (transform->m[2][1] * transform->m[2][1]) + (transform->m[2][2] * transform->m[2][2]))
 	);
 }
 
@@ -592,17 +672,17 @@ static inline s_mat4 s_mat4_extract_rotation(const s_mat4* transform, const s_ve
 	if (!transform || !scale) {
 		return rotation;
 	}
-	if (fabsf(scale->x) > S_EPSILON) {
+	if (s_real_abs(scale->x) > S_EPSILON) {
 		rotation.m[0][0] = transform->m[0][0] / scale->x;
 		rotation.m[0][1] = transform->m[0][1] / scale->x;
 		rotation.m[0][2] = transform->m[0][2] / scale->x;
 	}
-	if (fabsf(scale->y) > S_EPSILON) {
+	if (s_real_abs(scale->y) > S_EPSILON) {
 		rotation.m[1][0] = transform->m[1][0] / scale->y;
 		rotation.m[1][1] = transform->m[1][1] / scale->y;
 		rotation.m[1][2] = transform->m[1][2] / scale->y;
 	}
-	if (fabsf(scale->z) > S_EPSILON) {
+	if (s_real_abs(scale->z) > S_EPSILON) {
 		rotation.m[2][0] = transform->m[2][0] / scale->z;
 		rotation.m[2][1] = transform->m[2][1] / scale->z;
 		rotation.m[2][2] = transform->m[2][2] / scale->z;
@@ -614,12 +694,12 @@ static inline s_mat4 s_mat4_rotation_xyz(const s_vec3* rotation) {
 	if (!rotation) {
 		return s_mat4_identity;
 	}
-	const f32 cx = cosf(rotation->x);
-	const f32 sx = sinf(rotation->x);
-	const f32 cy = cosf(rotation->y);
-	const f32 sy = sinf(rotation->y);
-	const f32 cz = cosf(rotation->z);
-	const f32 sz = sinf(rotation->z);
+	const s_real cx = s_real_cos(rotation->x);
+	const s_real sx = s_real_sin(rotation->x);
+	const s_real cy = s_real_cos(rotation->y);
+	const s_real sy = s_real_sin(rotation->y);
+	const s_real cz = s_real_cos(rotation->z);
+	const s_real sz = s_real_sin(rotation->z);
 	return s_mat4(
 		cy * cz,
 		(sx * sy * cz) + (cx * sz),
@@ -652,17 +732,17 @@ static inline void s_mat4_apply_basis_scale(s_mat4* transform, const s_vec3* sca
 	transform->m[2][2] *= scale->z;
 }
 
-static inline s_box_2d s_box_2d_from_edges(const f32 left, const f32 bottom, const f32 right, const f32 top) {
+static inline s_box_2d s_box_2d_from_edges(const s_real left, const s_real bottom, const s_real right, const s_real top) {
 	s_box_2d box = {0};
-	box.min = s_vec2(s_min(left, right), s_min(bottom, top));
-	box.max = s_vec2(s_max(left, right), s_max(bottom, top));
+	box.min = s_vec2(s_real_min(left, right), s_real_min(bottom, top));
+	box.max = s_vec2(s_real_max(left, right), s_real_max(bottom, top));
 	return box;
 }
 
-static inline s_box_3d s_box_3d_from_edges(const f32 left, const f32 bottom, const f32 back, const f32 right, const f32 top, const f32 front) {
+static inline s_box_3d s_box_3d_from_edges(const s_real left, const s_real bottom, const s_real back, const s_real right, const s_real top, const s_real front) {
 	s_box_3d box = {0};
-	box.min = s_vec3(s_min(left, right), s_min(bottom, top), s_min(back, front));
-	box.max = s_vec3(s_max(left, right), s_max(bottom, top), s_max(back, front));
+	box.min = s_vec3(s_real_min(left, right), s_real_min(bottom, top), s_real_min(back, front));
+	box.max = s_vec3(s_real_max(left, right), s_real_max(bottom, top), s_real_max(back, front));
 	return box;
 }
 
@@ -676,31 +756,36 @@ static inline void s_box_2d_make(s_box_2d* out_box, const s_mat3* transform) {
 	out_box->max = s_vec2(pos.x + scale.x, -pos.y + scale.y);
 }
 
+static inline s_box_2d s_box_2d_empty(void);
+static inline s_box_3d s_box_3d_empty(void);
+
 static inline s_box_2d s_box_2d_clean(const s_box_2d* box) {
 	if (!box) {
-		return s_box_2d_from_edges(0.0f, 0.0f, 0.0f, 0.0f);
+		return s_box_2d_empty();
 	}
+    if (box->min.x > box->max.x || box->min.y > box->max.y) return s_box_2d_empty();
 	return s_box_2d_from_edges(box->min.x, box->min.y, box->max.x, box->max.y);
 }
 
 static inline s_box_3d s_box_3d_clean(const s_box_3d* box) {
 	if (!box) {
-		return s_box_3d_from_edges(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		return s_box_3d_empty();
 	}
+    if (box->min.x > box->max.x || box->min.y > box->max.y || box->min.z > box->max.z) return s_box_3d_empty();
 	return s_box_3d_from_edges(box->min.x, box->min.y, box->min.z, box->max.x, box->max.y, box->max.z);
 }
 
 static inline s_box_2d s_box_2d_empty(void) {
 	s_box_2d box = {0};
-	box.min = s_vec2(FLT_MAX, FLT_MAX);
-	box.max = s_vec2(-FLT_MAX, -FLT_MAX);
+	box.min = s_vec2((s_real)INFINITY, (s_real)INFINITY);
+	box.max = s_vec2((s_real)-INFINITY, (s_real)-INFINITY);
 	return box;
 }
 
 static inline s_box_3d s_box_3d_empty(void) {
 	s_box_3d box = {0};
-	box.min = s_vec3(FLT_MAX, FLT_MAX, FLT_MAX);
-	box.max = s_vec3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	box.min = s_vec3((s_real)INFINITY, (s_real)INFINITY, (s_real)INFINITY);
+	box.max = s_vec3((s_real)-INFINITY, (s_real)-INFINITY, (s_real)-INFINITY);
 	return box;
 }
 
@@ -708,40 +793,40 @@ static inline b8 s_box_2d_is_empty(const s_box_2d* box) {
 	if (!box) {
 		return true;
 	}
-	const s_box_2d clean = s_box_2d_clean(box);
-	return clean.max.x <= clean.min.x + S_EPSILON || clean.max.y <= clean.min.y + S_EPSILON;
+	return box->min.x > box->max.x || box->min.y > box->max.y ||
+        box->max.x <= box->min.x + S_EPSILON || box->max.y <= box->min.y + S_EPSILON;
 }
 
 static inline b8 s_box_3d_is_empty(const s_box_3d* box) {
 	if (!box) {
 		return true;
 	}
-	const s_box_3d clean = s_box_3d_clean(box);
-	return clean.max.x <= clean.min.x + S_EPSILON ||
-		clean.max.y <= clean.min.y + S_EPSILON ||
-		clean.max.z <= clean.min.z + S_EPSILON;
+	return box->min.x > box->max.x || box->min.y > box->max.y || box->min.z > box->max.z ||
+        box->max.x <= box->min.x + S_EPSILON ||
+		box->max.y <= box->min.y + S_EPSILON ||
+		box->max.z <= box->min.z + S_EPSILON;
 }
 
 static inline void s_box_2d_add_point(s_box_2d* out_box, const s_vec2* point) {
 	if (!out_box || !point) {
 		return;
 	}
-	out_box->min.x = s_min(out_box->min.x, point->x);
-	out_box->min.y = s_min(out_box->min.y, point->y);
-	out_box->max.x = s_max(out_box->max.x, point->x);
-	out_box->max.y = s_max(out_box->max.y, point->y);
+	out_box->min.x = s_real_min(out_box->min.x, point->x);
+	out_box->min.y = s_real_min(out_box->min.y, point->y);
+	out_box->max.x = s_real_max(out_box->max.x, point->x);
+	out_box->max.y = s_real_max(out_box->max.y, point->y);
 }
 
 static inline void s_box_3d_add_point(s_box_3d* out_box, const s_vec3* point) {
 	if (!out_box || !point) {
 		return;
 	}
-	out_box->min.x = s_min(out_box->min.x, point->x);
-	out_box->min.y = s_min(out_box->min.y, point->y);
-	out_box->min.z = s_min(out_box->min.z, point->z);
-	out_box->max.x = s_max(out_box->max.x, point->x);
-	out_box->max.y = s_max(out_box->max.y, point->y);
-	out_box->max.z = s_max(out_box->max.z, point->z);
+	out_box->min.x = s_real_min(out_box->min.x, point->x);
+	out_box->min.y = s_real_min(out_box->min.y, point->y);
+	out_box->min.z = s_real_min(out_box->min.z, point->z);
+	out_box->max.x = s_real_max(out_box->max.x, point->x);
+	out_box->max.y = s_real_max(out_box->max.y, point->y);
+	out_box->max.z = s_real_max(out_box->max.z, point->z);
 }
 
 static inline void s_box_2d_add(s_box_2d* out_box, const s_box_2d* box) {
@@ -749,6 +834,7 @@ static inline void s_box_2d_add(s_box_2d* out_box, const s_box_2d* box) {
 		return;
 	}
 	const s_box_2d clean = s_box_2d_clean(box);
+    if (s_box_2d_is_empty(&clean)) return;
 	s_box_2d_add_point(out_box, &clean.min);
 	s_box_2d_add_point(out_box, &clean.max);
 }
@@ -758,12 +844,13 @@ static inline void s_box_3d_add(s_box_3d* out_box, const s_box_3d* box) {
 		return;
 	}
 	const s_box_3d clean = s_box_3d_clean(box);
+    if (s_box_3d_is_empty(&clean)) return;
 	s_box_3d_add_point(out_box, &clean.min);
 	s_box_3d_add_point(out_box, &clean.max);
 }
 
-static inline void s_box_2d_expand(s_box_2d* box, const f32 amount) {
-	if (!box || amount <= 0.0f) {
+static inline void s_box_2d_expand(s_box_2d* box, const s_real amount) {
+	if (!box || s_box_2d_is_empty(box) || amount <= 0.0f) {
 		return;
 	}
 	const s_vec2 padding = s_vec2(amount, amount);
@@ -771,8 +858,8 @@ static inline void s_box_2d_expand(s_box_2d* box, const f32 amount) {
 	box->max = s_vec2_add(&box->max, &padding);
 }
 
-static inline void s_box_3d_expand(s_box_3d* box, const f32 amount) {
-	if (!box || amount <= 0.0f) {
+static inline void s_box_3d_expand(s_box_3d* box, const s_real amount) {
+	if (!box || s_box_3d_is_empty(box) || amount <= 0.0f) {
 		return;
 	}
 	const s_vec3 padding = s_vec3(amount, amount, amount);
@@ -780,42 +867,38 @@ static inline void s_box_3d_expand(s_box_3d* box, const f32 amount) {
 	box->max = s_vec3_add(&box->max, &padding);
 }
 
-static inline s_box_2d s_box_2d_translate(const s_box_2d* box, const f32 dx, const f32 dy) {
-	if (!box) {
-		return s_box_2d_from_edges(0.0f, 0.0f, 0.0f, 0.0f);
-	}
+static inline s_box_2d s_box_2d_translate(const s_box_2d* box, const s_real dx, const s_real dy) {
+	if (!box || s_box_2d_is_empty(box)) return s_box_2d_empty();
 	return s_box_2d_from_edges(box->min.x + dx, box->min.y + dy, box->max.x + dx, box->max.y + dy);
 }
 
-static inline s_box_3d s_box_3d_translate(const s_box_3d* box, const f32 dx, const f32 dy, const f32 dz) {
-	if (!box) {
-		return s_box_3d_from_edges(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-	}
+static inline s_box_3d s_box_3d_translate(const s_box_3d* box, const s_real dx, const s_real dy, const s_real dz) {
+	if (!box || s_box_3d_is_empty(box)) return s_box_3d_empty();
 	return s_box_3d_from_edges(box->min.x + dx, box->min.y + dy, box->min.z + dz, box->max.x + dx, box->max.y + dy, box->max.z + dz);
 }
 
-static inline f32 s_box_2d_width(const s_box_2d* box) {
-	return box ? (box->max.x - box->min.x) : 0.0f;
+static inline s_real s_box_2d_width(const s_box_2d* box) {
+	return box && !s_box_2d_is_empty(box) ? (box->max.x - box->min.x) : 0.0f;
 }
 
-static inline f32 s_box_2d_height(const s_box_2d* box) {
-	return box ? (box->max.y - box->min.y) : 0.0f;
+static inline s_real s_box_2d_height(const s_box_2d* box) {
+	return box && !s_box_2d_is_empty(box) ? (box->max.y - box->min.y) : 0.0f;
 }
 
-static inline f32 s_box_3d_width(const s_box_3d* box) {
-	return box ? (box->max.x - box->min.x) : 0.0f;
+static inline s_real s_box_3d_width(const s_box_3d* box) {
+	return box && !s_box_3d_is_empty(box) ? (box->max.x - box->min.x) : 0.0f;
 }
 
-static inline f32 s_box_3d_height(const s_box_3d* box) {
-	return box ? (box->max.y - box->min.y) : 0.0f;
+static inline s_real s_box_3d_height(const s_box_3d* box) {
+	return box && !s_box_3d_is_empty(box) ? (box->max.y - box->min.y) : 0.0f;
 }
 
-static inline f32 s_box_3d_depth(const s_box_3d* box) {
-	return box ? (box->max.z - box->min.z) : 0.0f;
+static inline s_real s_box_3d_depth(const s_box_3d* box) {
+	return box && !s_box_3d_is_empty(box) ? (box->max.z - box->min.z) : 0.0f;
 }
 
 static inline b8 s_box_2d_contains(const s_box_2d* box, const s_vec2* point) {
-	if (!box || !point) {
+	if (!box || !point || s_box_2d_is_empty(box)) {
 		return false;
 	}
 	return point->x >= box->min.x && point->x <= box->max.x &&
@@ -823,7 +906,7 @@ static inline b8 s_box_2d_contains(const s_box_2d* box, const s_vec2* point) {
 }
 
 static inline b8 s_box_3d_contains(const s_box_3d* box, const s_vec3* point) {
-	if (!box || !point) {
+	if (!box || !point || s_box_3d_is_empty(box)) {
 		return false;
 	}
 	return point->x >= box->min.x && point->x <= box->max.x &&
@@ -832,7 +915,7 @@ static inline b8 s_box_3d_contains(const s_box_3d* box, const s_vec3* point) {
 }
 
 static inline b8 s_box_2d_intersects(const s_box_2d* a, const s_box_2d* b) {
-	if (!a || !b) {
+	if (!a || !b || s_box_2d_is_empty(a) || s_box_2d_is_empty(b)) {
 		return false;
 	}
 	return a->min.x <= b->max.x && a->max.x >= b->min.x &&
@@ -840,7 +923,7 @@ static inline b8 s_box_2d_intersects(const s_box_2d* a, const s_box_2d* b) {
 }
 
 static inline b8 s_box_3d_intersects(const s_box_3d* a, const s_box_3d* b) {
-	if (!a || !b) {
+	if (!a || !b || s_box_3d_is_empty(a) || s_box_3d_is_empty(b)) {
 		return false;
 	}
 	return a->min.x <= b->max.x && a->max.x >= b->min.x &&
@@ -849,39 +932,43 @@ static inline b8 s_box_3d_intersects(const s_box_3d* a, const s_box_3d* b) {
 }
 
 static inline s_box_2d s_box_2d_intersection(const s_box_2d* a, const s_box_2d* b) {
-	if (!a) {
-		return b ? *b : s_box_2d_from_edges(0.0f, 0.0f, 0.0f, 0.0f);
-	}
-	if (!b) {
-		return *a;
-	}
-	if (!s_box_2d_intersects(a, b)) {
-		return s_box_2d_from_edges(0.0f, 0.0f, 0.0f, 0.0f);
-	}
+	if (!s_box_2d_intersects(a, b)) return s_box_2d_empty();
 	return s_box_2d_from_edges(
-		s_max(a->min.x, b->min.x),
-		s_max(a->min.y, b->min.y),
-		s_min(a->max.x, b->max.x),
-		s_min(a->max.y, b->max.y)
+		s_real_max(a->min.x, b->min.x),
+		s_real_max(a->min.y, b->min.y),
+		s_real_min(a->max.x, b->max.x),
+		s_real_min(a->max.y, b->max.y)
+	);
+}
+
+static inline s_box_3d s_box_3d_intersection(const s_box_3d* a, const s_box_3d* b) {
+	if (!s_box_3d_intersects(a, b)) return s_box_3d_empty();
+	return s_box_3d_from_edges(
+		s_real_max(a->min.x, b->min.x),
+		s_real_max(a->min.y, b->min.y),
+		s_real_max(a->min.z, b->min.z),
+		s_real_min(a->max.x, b->max.x),
+		s_real_min(a->max.y, b->max.y),
+		s_real_min(a->max.z, b->max.z)
 	);
 }
 
 static inline u32 s_box_2d_largest_axis(const s_box_2d* box) {
-	if (!box) {
+	if (!box || s_box_2d_is_empty(box)) {
 		return 0u;
 	}
-	const f32 extent_x = box->max.x - box->min.x;
-	const f32 extent_y = box->max.y - box->min.y;
+	const s_real extent_x = box->max.x - box->min.x;
+	const s_real extent_y = box->max.y - box->min.y;
 	return extent_x >= extent_y ? 0u : 1u;
 }
 
 static inline u32 s_box_3d_largest_axis(const s_box_3d* box) {
-	if (!box) {
+	if (!box || s_box_3d_is_empty(box)) {
 		return 0u;
 	}
-	const f32 extent_x = box->max.x - box->min.x;
-	const f32 extent_y = box->max.y - box->min.y;
-	const f32 extent_z = box->max.z - box->min.z;
+	const s_real extent_x = box->max.x - box->min.x;
+	const s_real extent_y = box->max.y - box->min.y;
+	const s_real extent_z = box->max.z - box->min.z;
 	if (extent_x >= extent_y && extent_x >= extent_z) {
 		return 0u;
 	}
@@ -889,8 +976,8 @@ static inline u32 s_box_3d_largest_axis(const s_box_3d* box) {
 }
 
 static inline s_box_2d s_box_2d_transform(const s_box_2d* box, const s_mat3* matrix) {
-	if (!box || !matrix) {
-		return s_box_2d_from_edges(0.0f, 0.0f, 0.0f, 0.0f);
+	if (!box || !matrix || s_box_2d_is_empty(box)) {
+		return s_box_2d_empty();
 	}
 	const s_box_2d clean = s_box_2d_clean(box);
 	const s_vec2 corners[4] = {
@@ -912,8 +999,8 @@ static inline s_box_2d s_box_2d_transform(const s_box_2d* box, const s_mat3* mat
 }
 
 static inline s_box_3d s_box_3d_transform(const s_box_3d* box, const s_mat4* matrix) {
-	if (!box || !matrix) {
-		return s_box_3d_from_edges(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	if (!box || !matrix || s_box_3d_is_empty(box)) {
+		return s_box_3d_empty();
 	}
 	const s_box_3d clean = s_box_3d_clean(box);
 	const s_vec3 corners[8] = {
@@ -939,7 +1026,7 @@ static inline b8 s_circle_intersects(const s_circle* a, const s_circle* b) {
 		return false;
 	}
 	const s_vec2 delta = s_vec2_sub(&a->position, &b->position);
-	const f32 radius = a->radius + b->radius;
+	const s_real radius = a->radius + b->radius;
 	return s_vec2_length_sq(&delta) <= radius * radius;
 }
 
@@ -948,50 +1035,35 @@ static inline b8 s_sphere_intersects(const s_sphere* a, const s_sphere* b) {
 		return false;
 	}
 	const s_vec3 delta = s_vec3_sub(&a->position, &b->position);
-	const f32 radius = a->radius + b->radius;
+	const s_real radius = a->radius + b->radius;
 	return s_vec3_length_sq(&delta) <= radius * radius;
 }
 
-static inline b8 s_ray_intersects_box_2d(const s_vec2* origin, const s_vec2* direction, const s_box_2d* box, f32* out_t) {
-	if (!origin || !direction || !box) {
+static inline b8 s_ray_intersects_box_2d(const s_vec2* origin, const s_vec2* direction, const s_box_2d* box, s_real* out_t) {
+	if (!origin || !direction || !box || s_box_2d_is_empty(box)) {
 		return false;
 	}
-	f32 tmin = 0.0f;
-	f32 tmax = FLT_MAX;
-	if (fabsf(direction->x) < S_EPSILON) {
-		if (origin->x < box->min.x || origin->x > box->max.x) {
-			return false;
+	s_real tmin = 0.0f;
+	s_real tmax = (s_real)INFINITY;
+	const s_real o[2] = { origin->x, origin->y };
+	const s_real d[2] = { direction->x, direction->y };
+	const s_real bmin[2] = { box->min.x, box->min.y };
+	const s_real bmax[2] = { box->max.x, box->max.y };
+	for (u32 i = 0u; i < 2u; ++i) {
+		if (s_real_abs(d[i]) < S_EPSILON) {
+			if (o[i] < bmin[i] || o[i] > bmax[i]) return false;
+			continue;
 		}
-	} else {
-		const f32 inv = 1.0f / direction->x;
-		f32 t1 = (box->min.x - origin->x) * inv;
-		f32 t2 = (box->max.x - origin->x) * inv;
+		const s_real inv = 1.0f / d[i];
+		s_real t1 = (bmin[i] - o[i]) * inv;
+		s_real t2 = (bmax[i] - o[i]) * inv;
 		if (t1 > t2) {
-			const f32 tmp = t1;
+			const s_real tmp = t1;
 			t1 = t2;
 			t2 = tmp;
 		}
-		tmin = s_max(tmin, t1);
-		tmax = s_min(tmax, t2);
-		if (tmin > tmax) {
-			return false;
-		}
-	}
-	if (fabsf(direction->y) < S_EPSILON) {
-		if (origin->y < box->min.y || origin->y > box->max.y) {
-			return false;
-		}
-	} else {
-		const f32 inv = 1.0f / direction->y;
-		f32 t1 = (box->min.y - origin->y) * inv;
-		f32 t2 = (box->max.y - origin->y) * inv;
-		if (t1 > t2) {
-			const f32 tmp = t1;
-			t1 = t2;
-			t2 = tmp;
-		}
-		tmin = s_max(tmin, t1);
-		tmax = s_min(tmax, t2);
+		tmin = s_real_max(tmin, t1);
+		tmax = s_real_min(tmax, t2);
 		if (tmin > tmax) {
 			return false;
 		}
@@ -1002,33 +1074,33 @@ static inline b8 s_ray_intersects_box_2d(const s_vec2* origin, const s_vec2* dir
 	return true;
 }
 
-static inline b8 s_ray_intersects_box_3d(const s_vec3* origin, const s_vec3* direction, const s_box_3d* box, f32* out_t) {
-	if (!origin || !direction || !box) {
+static inline b8 s_ray_intersects_box_3d(const s_vec3* origin, const s_vec3* direction, const s_box_3d* box, s_real* out_t) {
+	if (!origin || !direction || !box || s_box_3d_is_empty(box)) {
 		return false;
 	}
-	f32 tmin = 0.0f;
-	f32 tmax = FLT_MAX;
-	const f32 o[3] = { origin->x, origin->y, origin->z };
-	const f32 d[3] = { direction->x, direction->y, direction->z };
-	const f32 bmin[3] = { box->min.x, box->min.y, box->min.z };
-	const f32 bmax[3] = { box->max.x, box->max.y, box->max.z };
+	s_real tmin = 0.0f;
+	s_real tmax = (s_real)INFINITY;
+	const s_real o[3] = { origin->x, origin->y, origin->z };
+	const s_real d[3] = { direction->x, direction->y, direction->z };
+	const s_real bmin[3] = { box->min.x, box->min.y, box->min.z };
+	const s_real bmax[3] = { box->max.x, box->max.y, box->max.z };
 	for (u32 i = 0u; i < 3u; ++i) {
-		if (fabsf(d[i]) < S_EPSILON) {
+		if (s_real_abs(d[i]) < S_EPSILON) {
 			if (o[i] < bmin[i] || o[i] > bmax[i]) {
 				return false;
 			}
 			continue;
 		}
-		const f32 inv = 1.0f / d[i];
-		f32 t1 = (bmin[i] - o[i]) * inv;
-		f32 t2 = (bmax[i] - o[i]) * inv;
+		const s_real inv = 1.0f / d[i];
+		s_real t1 = (bmin[i] - o[i]) * inv;
+		s_real t2 = (bmax[i] - o[i]) * inv;
 		if (t1 > t2) {
-			const f32 tmp = t1;
+			const s_real tmp = t1;
 			t1 = t2;
 			t2 = tmp;
 		}
-		tmin = s_max(tmin, t1);
-		tmax = s_min(tmax, t2);
+		tmin = s_real_max(tmin, t1);
+		tmax = s_real_min(tmax, t2);
 		if (tmin > tmax) {
 			return false;
 		}
@@ -1039,23 +1111,23 @@ static inline b8 s_ray_intersects_box_3d(const s_vec3* origin, const s_vec3* dir
 	return true;
 }
 
-static inline b8 s_ray_intersects_circle_2d(const s_vec2* origin, const s_vec2* direction, const f32 max_distance, const s_vec2* center, const f32 radius, f32* out_t, s_vec2* out_normal) {
+static inline b8 s_ray_intersects_circle_2d(const s_vec2* origin, const s_vec2* direction, const s_real max_distance, const s_vec2* center, const s_real radius, s_real* out_t, s_vec2* out_normal) {
 	if (!origin || !direction || !center || radius <= 0.0f || max_distance <= 0.0f) {
 		return false;
 	}
 	const s_vec2 m = s_vec2(origin->x - center->x, origin->y - center->y);
-	const f32 a = s_vec2_dot(direction, direction);
+	const s_real a = s_vec2_dot(direction, direction);
 	if (a <= S_EPSILON) {
 		return false;
 	}
-	const f32 b = s_vec2_dot(&m, direction);
-	const f32 c = s_vec2_dot(&m, &m) - (radius * radius);
-	const f32 disc = (b * b) - (a * c);
+	const s_real b = s_vec2_dot(&m, direction);
+	const s_real c = s_vec2_dot(&m, &m) - (radius * radius);
+	const s_real disc = (b * b) - (a * c);
 	if (disc < 0.0f) {
 		return false;
 	}
-	const f32 sqrt_disc = sqrtf(disc);
-	f32 t = (-b - sqrt_disc) / a;
+	const s_real sqrt_disc = s_real_sqrt(disc);
+	s_real t = (-b - sqrt_disc) / a;
 	if (t < 0.0f) {
 		t = (-b + sqrt_disc) / a;
 	}
@@ -1068,29 +1140,29 @@ static inline b8 s_ray_intersects_circle_2d(const s_vec2* origin, const s_vec2* 
 	if (out_normal) {
 		const s_vec2 hit = s_vec2(origin->x + direction->x * t, origin->y + direction->y * t);
 		const s_vec2 diff = s_vec2(hit.x - center->x, hit.y - center->y);
-		const f32 len = s_vec2_length(&diff);
+		const s_real len = s_vec2_length(&diff);
 		*out_normal = len < S_EPSILON ? s_vec2(0.0f, 1.0f) : s_vec2(diff.x / len, diff.y / len);
 	}
 	return true;
 }
 
-static inline b8 s_ray_intersects_sphere_3d(const s_vec3* origin, const s_vec3* direction, const f32 max_distance, const s_vec3* center, const f32 radius, f32* out_t, s_vec3* out_normal) {
+static inline b8 s_ray_intersects_sphere_3d(const s_vec3* origin, const s_vec3* direction, const s_real max_distance, const s_vec3* center, const s_real radius, s_real* out_t, s_vec3* out_normal) {
 	if (!origin || !direction || !center || radius <= 0.0f || max_distance <= 0.0f) {
 		return false;
 	}
 	const s_vec3 m = s_vec3(origin->x - center->x, origin->y - center->y, origin->z - center->z);
-	const f32 a = s_vec3_dot(direction, direction);
+	const s_real a = s_vec3_dot(direction, direction);
 	if (a <= S_EPSILON) {
 		return false;
 	}
-	const f32 b = s_vec3_dot(&m, direction);
-	const f32 c = s_vec3_dot(&m, &m) - (radius * radius);
-	const f32 disc = (b * b) - (a * c);
+	const s_real b = s_vec3_dot(&m, direction);
+	const s_real c = s_vec3_dot(&m, &m) - (radius * radius);
+	const s_real disc = (b * b) - (a * c);
 	if (disc < 0.0f) {
 		return false;
 	}
-	const f32 sqrt_disc = sqrtf(disc);
-	f32 t = (-b - sqrt_disc) / a;
+	const s_real sqrt_disc = s_real_sqrt(disc);
+	s_real t = (-b - sqrt_disc) / a;
 	if (t < 0.0f) {
 		t = (-b + sqrt_disc) / a;
 	}
@@ -1103,35 +1175,35 @@ static inline b8 s_ray_intersects_sphere_3d(const s_vec3* origin, const s_vec3* 
 	if (out_normal) {
 		const s_vec3 hit = s_vec3(origin->x + direction->x * t, origin->y + direction->y * t, origin->z + direction->z * t);
 		const s_vec3 n = s_vec3(hit.x - center->x, hit.y - center->y, hit.z - center->z);
-		const f32 len = s_vec3_length(&n);
+		const s_real len = s_vec3_length(&n);
 		*out_normal = len < S_EPSILON ? s_vec3(0.0f, 1.0f, 0.0f) : s_vec3_divs(&n, len);
 	}
 	return true;
 }
 
-static inline b8 s_ray_intersects_triangle_3d(const s_vec3* origin, const s_vec3* direction, const f32 max_distance, const s_vec3* a, const s_vec3* b, const s_vec3* c, f32* out_t, s_vec3* out_normal) {
+static inline b8 s_ray_intersects_triangle_3d(const s_vec3* origin, const s_vec3* direction, const s_real max_distance, const s_vec3* a, const s_vec3* b, const s_vec3* c, s_real* out_t, s_vec3* out_normal) {
 	if (!origin || !direction || !a || !b || !c || max_distance <= 0.0f) {
 		return false;
 	}
 	const s_vec3 edge1 = s_vec3(b->x - a->x, b->y - a->y, b->z - a->z);
 	const s_vec3 edge2 = s_vec3(c->x - a->x, c->y - a->y, c->z - a->z);
 	const s_vec3 pvec = s_vec3_cross(direction, &edge2);
-	const f32 det = s_vec3_dot(&edge1, &pvec);
-	if (fabsf(det) < S_EPSILON) {
+	const s_real det = s_vec3_dot(&edge1, &pvec);
+	if (s_real_abs(det) < S_EPSILON) {
 		return false;
 	}
-	const f32 inv_det = 1.0f / det;
+	const s_real inv_det = 1.0f / det;
 	const s_vec3 tvec = s_vec3(origin->x - a->x, origin->y - a->y, origin->z - a->z);
-	const f32 u = s_vec3_dot(&tvec, &pvec) * inv_det;
+	const s_real u = s_vec3_dot(&tvec, &pvec) * inv_det;
 	if (u < 0.0f || u > 1.0f) {
 		return false;
 	}
 	const s_vec3 qvec = s_vec3_cross(&tvec, &edge1);
-	const f32 v = s_vec3_dot(direction, &qvec) * inv_det;
+	const s_real v = s_vec3_dot(direction, &qvec) * inv_det;
 	if (v < 0.0f || u + v > 1.0f) {
 		return false;
 	}
-	const f32 t = s_vec3_dot(&edge2, &qvec) * inv_det;
+	const s_real t = s_vec3_dot(&edge2, &qvec) * inv_det;
 	if (t < 0.0f || t > max_distance) {
 		return false;
 	}
@@ -1140,7 +1212,7 @@ static inline b8 s_ray_intersects_triangle_3d(const s_vec3* origin, const s_vec3
 	}
 	if (out_normal) {
 		const s_vec3 n = s_vec3_cross(&edge1, &edge2);
-		const f32 len = s_vec3_length(&n);
+		const s_real len = s_vec3_length(&n);
 		*out_normal = len < S_EPSILON ? s_vec3(0.0f, 1.0f, 0.0f) : s_vec3_divs(&n, len);
 	}
 	return true;
@@ -1151,8 +1223,8 @@ static inline s_vec2 s_closest_point_on_segment_2d(const s_vec2* a, const s_vec2
 		return s_vec2(0.0f, 0.0f);
 	}
 	const s_vec2 ab = s_vec2_sub(b, a);
-	const f32 denom = s_vec2_dot(&ab, &ab);
-	f32 t = 0.0f;
+	const s_real denom = s_vec2_dot(&ab, &ab);
+	s_real t = 0.0f;
 	if (denom > S_EPSILON) {
 		const s_vec2 ap = s_vec2_sub(p, a);
 		t = s_vec2_dot(&ap, &ab) / denom;
@@ -1166,8 +1238,8 @@ static inline s_vec3 s_closest_point_on_segment_3d(const s_vec3* a, const s_vec3
 		return s_vec3(0.0f, 0.0f, 0.0f);
 	}
 	const s_vec3 ab = s_vec3_sub(b, a);
-	const f32 denom = s_vec3_dot(&ab, &ab);
-	f32 t = 0.0f;
+	const s_real denom = s_vec3_dot(&ab, &ab);
+	s_real t = 0.0f;
 	if (denom > S_EPSILON) {
 		const s_vec3 ap = s_vec3_sub(p, a);
 		t = s_vec3_dot(&ap, &ab) / denom;
@@ -1183,42 +1255,42 @@ static inline s_vec2 s_closest_point_on_triangle_2d(const s_vec2* a, const s_vec
 	const s_vec2 ab = s_vec2_sub(b, a);
 	const s_vec2 ac = s_vec2_sub(c, a);
 	const s_vec2 ap = s_vec2_sub(p, a);
-	const f32 d1 = s_vec2_dot(&ab, &ap);
-	const f32 d2 = s_vec2_dot(&ac, &ap);
+	const s_real d1 = s_vec2_dot(&ab, &ap);
+	const s_real d2 = s_vec2_dot(&ac, &ap);
 	if (d1 <= 0.0f && d2 <= 0.0f) {
 		return *a;
 	}
 	const s_vec2 bp = s_vec2_sub(p, b);
-	const f32 d3 = s_vec2_dot(&ab, &bp);
-	const f32 d4 = s_vec2_dot(&ac, &bp);
+	const s_real d3 = s_vec2_dot(&ab, &bp);
+	const s_real d4 = s_vec2_dot(&ac, &bp);
 	if (d3 >= 0.0f && d4 <= d3) {
 		return *b;
 	}
-	const f32 vc = (d1 * d4) - (d3 * d2);
+	const s_real vc = (d1 * d4) - (d3 * d2);
 	if (vc <= 0.0f && d1 >= 0.0f && d3 <= 0.0f) {
-		const f32 v = d1 / (d1 - d3);
+		const s_real v = d1 / (d1 - d3);
 		return s_vec2(a->x + ab.x * v, a->y + ab.y * v);
 	}
 	const s_vec2 cp = s_vec2_sub(p, c);
-	const f32 d5 = s_vec2_dot(&ab, &cp);
-	const f32 d6 = s_vec2_dot(&ac, &cp);
+	const s_real d5 = s_vec2_dot(&ab, &cp);
+	const s_real d6 = s_vec2_dot(&ac, &cp);
 	if (d6 >= 0.0f && d5 <= d6) {
 		return *c;
 	}
-	const f32 vb = (d5 * d2) - (d1 * d6);
+	const s_real vb = (d5 * d2) - (d1 * d6);
 	if (vb <= 0.0f && d2 >= 0.0f && d6 <= 0.0f) {
-		const f32 w = d2 / (d2 - d6);
+		const s_real w = d2 / (d2 - d6);
 		return s_vec2(a->x + ac.x * w, a->y + ac.y * w);
 	}
-	const f32 va = (d3 * d6) - (d5 * d4);
+	const s_real va = (d3 * d6) - (d5 * d4);
 	if (va <= 0.0f && (d4 - d3) >= 0.0f && (d5 - d6) >= 0.0f) {
 		const s_vec2 bc = s_vec2_sub(c, b);
-		const f32 w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+		const s_real w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
 		return s_vec2(b->x + bc.x * w, b->y + bc.y * w);
 	}
-	const f32 denom = 1.0f / (va + vb + vc);
-	const f32 v = vb * denom;
-	const f32 w = vc * denom;
+	const s_real denom = 1.0f / (va + vb + vc);
+	const s_real v = vb * denom;
+	const s_real w = vc * denom;
 	return s_vec2(a->x + ab.x * v + ac.x * w, a->y + ab.y * v + ac.y * w);
 }
 
@@ -1229,42 +1301,42 @@ static inline s_vec3 s_closest_point_on_triangle_3d(const s_vec3* a, const s_vec
 	const s_vec3 ab = s_vec3_sub(b, a);
 	const s_vec3 ac = s_vec3_sub(c, a);
 	const s_vec3 ap = s_vec3_sub(p, a);
-	const f32 d1 = s_vec3_dot(&ab, &ap);
-	const f32 d2 = s_vec3_dot(&ac, &ap);
+	const s_real d1 = s_vec3_dot(&ab, &ap);
+	const s_real d2 = s_vec3_dot(&ac, &ap);
 	if (d1 <= 0.0f && d2 <= 0.0f) {
 		return *a;
 	}
 	const s_vec3 bp = s_vec3_sub(p, b);
-	const f32 d3 = s_vec3_dot(&ab, &bp);
-	const f32 d4 = s_vec3_dot(&ac, &bp);
+	const s_real d3 = s_vec3_dot(&ab, &bp);
+	const s_real d4 = s_vec3_dot(&ac, &bp);
 	if (d3 >= 0.0f && d4 <= d3) {
 		return *b;
 	}
-	const f32 vc = (d1 * d4) - (d3 * d2);
+	const s_real vc = (d1 * d4) - (d3 * d2);
 	if (vc <= 0.0f && d1 >= 0.0f && d3 <= 0.0f) {
-		const f32 v = d1 / (d1 - d3);
+		const s_real v = d1 / (d1 - d3);
 		return s_vec3(a->x + ab.x * v, a->y + ab.y * v, a->z + ab.z * v);
 	}
 	const s_vec3 cp = s_vec3_sub(p, c);
-	const f32 d5 = s_vec3_dot(&ab, &cp);
-	const f32 d6 = s_vec3_dot(&ac, &cp);
+	const s_real d5 = s_vec3_dot(&ab, &cp);
+	const s_real d6 = s_vec3_dot(&ac, &cp);
 	if (d6 >= 0.0f && d5 <= d6) {
 		return *c;
 	}
-	const f32 vb = (d5 * d2) - (d1 * d6);
+	const s_real vb = (d5 * d2) - (d1 * d6);
 	if (vb <= 0.0f && d2 >= 0.0f && d6 <= 0.0f) {
-		const f32 w = d2 / (d2 - d6);
+		const s_real w = d2 / (d2 - d6);
 		return s_vec3(a->x + ac.x * w, a->y + ac.y * w, a->z + ac.z * w);
 	}
-	const f32 va = (d3 * d6) - (d5 * d4);
+	const s_real va = (d3 * d6) - (d5 * d4);
 	if (va <= 0.0f && (d4 - d3) >= 0.0f && (d5 - d6) >= 0.0f) {
 		const s_vec3 bc = s_vec3_sub(c, b);
-		const f32 w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+		const s_real w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
 		return s_vec3(b->x + bc.x * w, b->y + bc.y * w, b->z + bc.z * w);
 	}
-	const f32 denom = 1.0f / (va + vb + vc);
-	const f32 v = vb * denom;
-	const f32 w = vc * denom;
+	const s_real denom = 1.0f / (va + vb + vc);
+	const s_real v = vb * denom;
+	const s_real w = vc * denom;
 	return s_vec3(a->x + ab.x * v + ac.x * w, a->y + ab.y * v + ac.y * w, a->z + ab.z * v + ac.z * w);
 }
 

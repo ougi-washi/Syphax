@@ -1,6 +1,6 @@
+#define SYPHAX_STATIC
 #include "s_files.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 int main(void) {
@@ -32,7 +32,7 @@ int main(void) {
         return 1;
     }
     printf("read=%s\n", data);
-    free(data);
+    s_free(data);
 
     const char* more = " world";
     s_file_append(path, more, (sz)strlen(more));
@@ -41,7 +41,7 @@ int main(void) {
         return 1;
     }
     printf("appended=%s\n", data);
-    free(data);
+    s_free(data);
 
     s_directory_remove_recursive(root);
     return 0;

@@ -1,5 +1,7 @@
 # Prerequisites
 *.d
+/build/
+/build-sanitize/
 
 # Object files
 *.o
@@ -35,6 +37,13 @@
 *.i*86
 *.x86_64
 *.hex
+/examples/array
+/examples/files
+/examples/json
+/examples/memory
+/examples/thread
+/examples/types
+/tests/*_test
 
 # Debug files
 *.dSYM/

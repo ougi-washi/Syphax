@@ -31,46 +31,78 @@ typedef void* (*s_thread_fn)(void*);
 
 #if defined(_WIN32)
 typedef DWORD s_thread_id;
-typedef struct { HANDLE handle; s_thread_id id; } s_thread;
+typedef struct s_thread_win_state s_thread_win_state;
+typedef struct { HANDLE handle; s_thread_id id; s_thread_win_state* state; b8 joined; b8 detached; } s_thread;
 typedef struct { CRITICAL_SECTION cs; } s_mutex;
 typedef struct { CONDITION_VARIABLE cv; } s_cond;
 #else
 typedef pthread_t s_thread_id;
-typedef struct { pthread_t handle; } s_thread;
+typedef struct { pthread_t handle; b8 joined; b8 detached; } s_thread;
 typedef struct { pthread_mutex_t mtx; } s_mutex;
 typedef struct { pthread_cond_t cv; } s_cond;
 #endif
 
-static inline s_thread_id s_thread_current_id(void);
-static inline b8 s_thread_id_equal(s_thread_id _a, s_thread_id _b);
+#if !defined(SYPHAX_STATIC)
+s_thread_id s_thread_current_id(void);
+b8 s_thread_id_equal(s_thread_id _a, s_thread_id _b);
+b8 s_thread_create(s_thread* _thread, s_thread_fn _fn, void* _arg);
+b8 s_thread_join(s_thread* _thread, void** _out_ret);
+b8 s_thread_detach(s_thread* _thread);
+void s_thread_sleep_ms(u32 _ms);
+void s_thread_yield(void);
+b8 s_mutex_init(s_mutex* _mtx);
+b8 s_mutex_destroy(s_mutex* _mtx);
+b8 s_mutex_lock(s_mutex* _mtx);
+b8 s_mutex_try_lock(s_mutex* _mtx);
+b8 s_mutex_unlock(s_mutex* _mtx);
+b8 s_cond_init(s_cond* _cond);
+b8 s_cond_destroy(s_cond* _cond);
+b8 s_cond_wait(s_cond* _cond, s_mutex* _mtx);
+b8 s_cond_wait_ms(s_cond* _cond, s_mutex* _mtx, u32 _timeout_ms);
+b8 s_cond_signal(s_cond* _cond);
+b8 s_cond_broadcast(s_cond* _cond);
+#endif
+
+#if defined(SYPHAX_STATIC) || defined(SYPHAX_IMPLEMENTATION)
+#if defined(SYPHAX_STATIC)
+#define S_THREAD_DEF static inline
+#else
+#define S_THREAD_DEF
+#endif
 
 #if defined(_WIN32)
-typedef struct {
+struct s_thread_win_state {
     s_thread_fn fn;
     void* arg;
-} s_thread_start;
+    void* ret;
+    volatile LONG lifecycle;
+};
 
 static DWORD WINAPI s_thread_start_trampoline(void* _arg) {
-    s_thread_start* start = (s_thread_start*)_arg;
-    s_thread_fn fn = start->fn;
-    void* arg = start->arg;
-    free(start);
-    void* ret = fn(arg);
-    return (DWORD)(uintptr_t)ret;
+    s_thread_win_state* state = (s_thread_win_state*)_arg;
+    state->ret = state->fn(state->arg);
+    if (InterlockedCompareExchange(&state->lifecycle, 2, 0) == 1) {
+        s_free(state);
+    }
+    return 0;
 }
 #endif
 
-static inline b8 s_thread_create(s_thread* _thread, s_thread_fn _fn, void* _arg) {
-    s_assertf(_thread != NULL, "s_thread_create :: Thread is null\n");
-    s_assertf(_fn != NULL, "s_thread_create :: Function is null\n");
+S_THREAD_DEF b8 s_thread_create(s_thread* _thread, s_thread_fn _fn, void* _arg) {
+    if (_thread == NULL || _fn == NULL) return false;
+    *_thread = (s_thread){0};
 #if defined(_WIN32)
-    s_thread_start* start = (s_thread_start*)malloc(sizeof(s_thread_start));
-    if (start == NULL) return false;
-    start->fn = _fn;
-    start->arg = _arg;
-    _thread->handle = CreateThread(NULL, 0, s_thread_start_trampoline, start, 0, &_thread->id);
+    s_thread_win_state* state = (s_thread_win_state*)s_malloc(sizeof(s_thread_win_state));
+    if (state == NULL) return false;
+    state->fn = _fn;
+    state->arg = _arg;
+    state->ret = NULL;
+    state->lifecycle = 0;
+    _thread->state = state;
+    _thread->handle = CreateThread(NULL, 0, s_thread_start_trampoline, state, 0, &_thread->id);
     if (_thread->handle == NULL) {
-        free(start);
+        s_free(state);
+        _thread->state = NULL;
         return false;
     }
     return true;
@@ -79,41 +111,51 @@ static inline b8 s_thread_create(s_thread* _thread, s_thread_fn _fn, void* _arg)
 #endif
 }
 
-static inline b8 s_thread_join(s_thread* _thread, void** _out_ret) {
-    s_assertf(_thread != NULL, "s_thread_join :: Thread is null\n");
+S_THREAD_DEF b8 s_thread_join(s_thread* _thread, void** _out_ret) {
+    if (_thread == NULL || _thread->joined || _thread->detached) return false;
 #if defined(_WIN32)
+    if (_thread->handle == NULL) return false;
+    s_thread_win_state* state = _thread->state;
     DWORD wait_result = WaitForSingleObject(_thread->handle, INFINITE);
     if (wait_result != WAIT_OBJECT_0) return false;
-    if (_out_ret != NULL) {
-        DWORD code = 0;
-        if (!GetExitCodeThread(_thread->handle, &code)) return false;
-        *_out_ret = (void*)(uintptr_t)code;
-    }
+    if (_out_ret != NULL) *_out_ret = state != NULL ? state->ret : NULL;
     CloseHandle(_thread->handle);
+    s_free(state);
     _thread->handle = NULL;
     _thread->id = 0;
+    _thread->state = NULL;
+    _thread->joined = true;
     return true;
 #else
     void* ret = NULL;
     if (pthread_join(_thread->handle, _out_ret ? _out_ret : &ret) != 0) return false;
+    _thread->joined = true;
     return true;
 #endif
 }
 
-static inline b8 s_thread_detach(s_thread* _thread) {
-    s_assertf(_thread != NULL, "s_thread_detach :: Thread is null\n");
+S_THREAD_DEF b8 s_thread_detach(s_thread* _thread) {
+    if (_thread == NULL || _thread->joined || _thread->detached) return false;
 #if defined(_WIN32)
     if (_thread->handle == NULL) return false;
+    s_thread_win_state* state = _thread->state;
     CloseHandle(_thread->handle);
     _thread->handle = NULL;
     _thread->id = 0;
+    _thread->state = NULL;
+    _thread->detached = true;
+    if (state != NULL && InterlockedCompareExchange(&state->lifecycle, 1, 0) == 2) {
+        s_free(state);
+    }
     return true;
 #else
-    return pthread_detach(_thread->handle) == 0;
+    if (pthread_detach(_thread->handle) != 0) return false;
+    _thread->detached = true;
+    return true;
 #endif
 }
 
-static inline void s_thread_sleep_ms(u32 _ms) {
+S_THREAD_DEF void s_thread_sleep_ms(u32 _ms) {
 #if defined(_WIN32)
     Sleep(_ms);
 #else
@@ -124,7 +166,7 @@ static inline void s_thread_sleep_ms(u32 _ms) {
 #endif
 }
 
-static inline void s_thread_yield(void) {
+S_THREAD_DEF void s_thread_yield(void) {
 #if defined(_WIN32)
     SwitchToThread();
 #else
@@ -132,7 +174,7 @@ static inline void s_thread_yield(void) {
 #endif
 }
 
-static inline s_thread_id s_thread_current_id(void) {
+S_THREAD_DEF s_thread_id s_thread_current_id(void) {
 #if defined(_WIN32)
     return GetCurrentThreadId();
 #else
@@ -140,7 +182,7 @@ static inline s_thread_id s_thread_current_id(void) {
 #endif
 }
 
-static inline b8 s_thread_id_equal(s_thread_id _a, s_thread_id _b) {
+S_THREAD_DEF b8 s_thread_id_equal(s_thread_id _a, s_thread_id _b) {
 #if defined(_WIN32)
     return _a == _b;
 #else
@@ -148,8 +190,8 @@ static inline b8 s_thread_id_equal(s_thread_id _a, s_thread_id _b) {
 #endif
 }
 
-static inline b8 s_mutex_init(s_mutex* _mtx) {
-    s_assertf(_mtx != NULL, "s_mutex_init :: Mutex is null\n");
+S_THREAD_DEF b8 s_mutex_init(s_mutex* _mtx) {
+    if (_mtx == NULL) return false;
 #if defined(_WIN32)
     InitializeCriticalSection(&_mtx->cs);
     return true;
@@ -158,26 +200,28 @@ static inline b8 s_mutex_init(s_mutex* _mtx) {
 #endif
 }
 
-static inline void s_mutex_destroy(s_mutex* _mtx) {
-    s_assertf(_mtx != NULL, "s_mutex_destroy :: Mutex is null\n");
+S_THREAD_DEF b8 s_mutex_destroy(s_mutex* _mtx) {
+    if (_mtx == NULL) return false;
 #if defined(_WIN32)
     DeleteCriticalSection(&_mtx->cs);
+    return true;
 #else
-    pthread_mutex_destroy(&_mtx->mtx);
+    return pthread_mutex_destroy(&_mtx->mtx) == 0;
 #endif
 }
 
-static inline void s_mutex_lock(s_mutex* _mtx) {
-    s_assertf(_mtx != NULL, "s_mutex_lock :: Mutex is null\n");
+S_THREAD_DEF b8 s_mutex_lock(s_mutex* _mtx) {
+    if (_mtx == NULL) return false;
 #if defined(_WIN32)
     EnterCriticalSection(&_mtx->cs);
+    return true;
 #else
-    pthread_mutex_lock(&_mtx->mtx);
+    return pthread_mutex_lock(&_mtx->mtx) == 0;
 #endif
 }
 
-static inline b8 s_mutex_try_lock(s_mutex* _mtx) {
-    s_assertf(_mtx != NULL, "s_mutex_try_lock :: Mutex is null\n");
+S_THREAD_DEF b8 s_mutex_try_lock(s_mutex* _mtx) {
+    if (_mtx == NULL) return false;
 #if defined(_WIN32)
     return TryEnterCriticalSection(&_mtx->cs) != 0;
 #else
@@ -185,17 +229,18 @@ static inline b8 s_mutex_try_lock(s_mutex* _mtx) {
 #endif
 }
 
-static inline void s_mutex_unlock(s_mutex* _mtx) {
-    s_assertf(_mtx != NULL, "s_mutex_unlock :: Mutex is null\n");
+S_THREAD_DEF b8 s_mutex_unlock(s_mutex* _mtx) {
+    if (_mtx == NULL) return false;
 #if defined(_WIN32)
     LeaveCriticalSection(&_mtx->cs);
+    return true;
 #else
-    pthread_mutex_unlock(&_mtx->mtx);
+    return pthread_mutex_unlock(&_mtx->mtx) == 0;
 #endif
 }
 
-static inline b8 s_cond_init(s_cond* _cond) {
-    s_assertf(_cond != NULL, "s_cond_init :: Cond is null\n");
+S_THREAD_DEF b8 s_cond_init(s_cond* _cond) {
+    if (_cond == NULL) return false;
 #if defined(_WIN32)
     InitializeConditionVariable(&_cond->cv);
     return true;
@@ -204,28 +249,27 @@ static inline b8 s_cond_init(s_cond* _cond) {
 #endif
 }
 
-static inline void s_cond_destroy(s_cond* _cond) {
-    s_assertf(_cond != NULL, "s_cond_destroy :: Cond is null\n");
+S_THREAD_DEF b8 s_cond_destroy(s_cond* _cond) {
+    if (_cond == NULL) return false;
 #if defined(_WIN32)
     (void)_cond;
+    return true;
 #else
-    pthread_cond_destroy(&_cond->cv);
+    return pthread_cond_destroy(&_cond->cv) == 0;
 #endif
 }
 
-static inline void s_cond_wait(s_cond* _cond, s_mutex* _mtx) {
-    s_assertf(_cond != NULL, "s_cond_wait :: Cond is null\n");
-    s_assertf(_mtx != NULL, "s_cond_wait :: Mutex is null\n");
+S_THREAD_DEF b8 s_cond_wait(s_cond* _cond, s_mutex* _mtx) {
+    if (_cond == NULL || _mtx == NULL) return false;
 #if defined(_WIN32)
-    SleepConditionVariableCS(&_cond->cv, &_mtx->cs, INFINITE);
+    return SleepConditionVariableCS(&_cond->cv, &_mtx->cs, INFINITE) != 0;
 #else
-    pthread_cond_wait(&_cond->cv, &_mtx->mtx);
+    return pthread_cond_wait(&_cond->cv, &_mtx->mtx) == 0;
 #endif
 }
 
-static inline b8 s_cond_wait_ms(s_cond* _cond, s_mutex* _mtx, u32 _timeout_ms) {
-    s_assertf(_cond != NULL, "s_cond_wait_ms :: Cond is null\n");
-    s_assertf(_mtx != NULL, "s_cond_wait_ms :: Mutex is null\n");
+S_THREAD_DEF b8 s_cond_wait_ms(s_cond* _cond, s_mutex* _mtx, u32 _timeout_ms) {
+    if (_cond == NULL || _mtx == NULL) return false;
 #if defined(_WIN32)
     return SleepConditionVariableCS(&_cond->cv, &_mtx->cs, _timeout_ms) != 0;
 #else
@@ -248,22 +292,27 @@ static inline b8 s_cond_wait_ms(s_cond* _cond, s_mutex* _mtx, u32 _timeout_ms) {
 #endif
 }
 
-static inline void s_cond_signal(s_cond* _cond) {
-    s_assertf(_cond != NULL, "s_cond_signal :: Cond is null\n");
+S_THREAD_DEF b8 s_cond_signal(s_cond* _cond) {
+    if (_cond == NULL) return false;
 #if defined(_WIN32)
     WakeConditionVariable(&_cond->cv);
+    return true;
 #else
-    pthread_cond_signal(&_cond->cv);
+    return pthread_cond_signal(&_cond->cv) == 0;
 #endif
 }
 
-static inline void s_cond_broadcast(s_cond* _cond) {
-    s_assertf(_cond != NULL, "s_cond_broadcast :: Cond is null\n");
+S_THREAD_DEF b8 s_cond_broadcast(s_cond* _cond) {
+    if (_cond == NULL) return false;
 #if defined(_WIN32)
     WakeAllConditionVariable(&_cond->cv);
+    return true;
 #else
-    pthread_cond_broadcast(&_cond->cv);
+    return pthread_cond_broadcast(&_cond->cv) == 0;
 #endif
 }
+
+#undef S_THREAD_DEF
+#endif
 
 #endif // S_THREAD_H

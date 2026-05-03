@@ -13,8 +13,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
-#include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef bool b8;
 typedef int8_t i8;
@@ -31,7 +31,53 @@ typedef char c8;
 typedef unsigned char uc8;
 typedef size_t sz;
 
-#define s_assert(expr) if (!(expr))         { fprintf(stderr, "[%s: %d] Assertion failed: %s\n", __FILE__, __LINE__, #expr); assert(0); }
-#define s_assertf(expr, ...) if (!(expr))   { fprintf(stderr, "[%s: %d] Assertion failed: %s\n", __FILE__, __LINE__, #expr); fprintf(stderr, __VA_ARGS__); assert(0); }
+#ifndef SYPHAX_MALLOC
+#define SYPHAX_MALLOC malloc
+#endif
+
+#ifndef SYPHAX_REALLOC
+#define SYPHAX_REALLOC realloc
+#endif
+
+#ifndef SYPHAX_FREE
+#define SYPHAX_FREE free
+#endif
+
+#ifndef SYPHAX_ABORT
+#define SYPHAX_ABORT abort
+#endif
+
+#ifndef s_malloc
+#define s_malloc(_size) SYPHAX_MALLOC((_size))
+#endif
+
+#ifndef s_realloc
+#define s_realloc(_ptr, _size) SYPHAX_REALLOC((_ptr), (_size))
+#endif
+
+#ifndef s_free
+#define s_free(_ptr) SYPHAX_FREE((_ptr))
+#endif
+
+#ifndef s_abort
+#define s_abort() SYPHAX_ABORT()
+#endif
+
+#define s_assert(_expr) \
+    do { \
+        if (!(_expr)) { \
+            fprintf(stderr, "[%s:%d] assertion failed: %s\n", __FILE__, __LINE__, #_expr); \
+            s_abort(); \
+        } \
+    } while (0)
+
+#define s_assertf(_expr, ...) \
+    do { \
+        if (!(_expr)) { \
+            fprintf(stderr, "[%s:%d] assertion failed: %s\n", __FILE__, __LINE__, #_expr); \
+            fprintf(stderr, __VA_ARGS__); \
+            s_abort(); \
+        } \
+    } while (0)
 
 #endif // S_TYPES_H
