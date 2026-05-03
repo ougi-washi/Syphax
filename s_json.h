@@ -16,6 +16,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 
 typedef enum {
     S_JSON_NULL = 0,
