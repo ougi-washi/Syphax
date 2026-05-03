@@ -17,6 +17,7 @@
  * s_array_get_data(&my_array);
  * s_array_reserve(&my_array, capacity);
  * s_array_add(&my_array, value);
+ * s_array_append_many(&my_array, values, count);
  * s_array_increment(&my_array);
  * s_array_handle(&my_array, dense_index);
  * s_array_get(&my_array, handle);
@@ -180,6 +181,52 @@ static inline s_handle s_array_add_copy(s_array_base* a, sz elem_size, const voi
     u32 dense = a->slot_to_dense[s_handle_slot(h)];
     memcpy(a->data + (sz)dense * elem_size, value_ptr, elem_size);
     return h;
+}
+
+static inline s_handle s_array_append_many_copy(s_array_base* a, sz elem_size, const void* values_ptr, sz count)
+{
+    if (count == 0) return S_HANDLE_NULL;
+
+    s_assertf(values_ptr != NULL, "s_array :: append_many values_ptr=NULL\n");
+    s_assertf(a->size <= (SIZE_MAX - count), "s_array :: append_many size overflow\n");
+
+    sz old_size = a->size;
+    sz new_size = old_size + count;
+
+    s_array_reserve_base(a, elem_size, new_size);
+
+    s_handle first = S_HANDLE_NULL;
+    if (a->free_count == 0) {
+        s_assertf(count <= (sz)(UINT32_MAX - a->slot_count), "s_array :: too many slots for u32\n");
+
+        u32 first_slot = a->slot_count;
+        a->slot_count += (u32)count;
+        first = s_handle_make(first_slot, a->gen[first_slot]);
+
+        for (sz i = 0; i < count; ++i) {
+            u32 slot = first_slot + (u32)i;
+            u32 dense = (u32)(old_size + i);
+
+            a->slot_to_dense[slot] = dense;
+            a->dense_to_slot[dense] = slot;
+        }
+    } else {
+        for (sz i = 0; i < count; ++i) {
+            u32 slot = s_array_alloc_slot(a);
+            u32 dense = (u32)(old_size + i);
+
+            a->slot_to_dense[slot] = dense;
+            a->dense_to_slot[dense] = slot;
+
+            if (i == 0) {
+                first = s_handle_make(slot, a->gen[slot]);
+            }
+        }
+    }
+
+    memcpy(a->data + old_size * elem_size, values_ptr, count * elem_size);
+    a->size = new_size;
+    return first;
 }
 
 static inline void* s_array_get_ptr(const s_array_base* a, sz elem_size, s_handle h)
@@ -372,6 +419,10 @@ static inline void s_array_copy_base(s_array_base* dst, const s_array_base* src,
 // Returns handle. _value must be an lvalue (so &(_value) is valid).
 #define s_array_add(_arr, _value_lvalue) \
     s_array_add_copy(&(_arr)->b, sizeof(*(_arr)->tag), (const void*)&(_value_lvalue))
+
+// Appends _count values from _values. Returns first appended handle, or S_HANDLE_NULL for 0.
+#define s_array_append_many(_arr, _values, _count) \
+    s_array_append_many_copy(&(_arr)->b, sizeof(*(_arr)->tag), (const void*)(_values), (sz)(_count))
 
 // Returns handle to a zeroed element; fill it via s_array_get()
 #define s_array_increment(_arr) \
