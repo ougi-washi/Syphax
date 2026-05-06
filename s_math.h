@@ -47,7 +47,7 @@ static inline i32 s_i32_abs(i32 _v) { return _v == INT32_MIN ? INT32_MAX : (_v <
 
 #define s_min(_a_vec, _b_vec) ((_a_vec) < (_b_vec) ? (_a_vec) : (_b_vec))
 #define s_max(_a_vec, _b_vec) ((_a_vec) > (_b_vec) ? (_a_vec) : (_b_vec))
-#define PI 3.14159265359
+#define PI 3.14159265358979323846
 
 #ifndef S_EPSILON
 #define S_EPSILON ((s_real)1e-6)
